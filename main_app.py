@@ -18,8 +18,6 @@ from tkinter import *
 from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
 from datetime import date, datetime, timedelta
-import random
-import string
 from PIL import Image, ImageTk
 
 # Import project modules

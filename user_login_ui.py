@@ -18,8 +18,6 @@ from tkinter import *
 from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
 from datetime import date, datetime, timedelta
-import random
-import string
 from PIL import Image, ImageTk
 
 # Import project modules
@@ -46,7 +44,7 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         """            
         # Create the root tkinter variable
         super().__init__(parent, *args, **kwargs)
-        self.controller = controller
+        self.controller = controller # Set the controller object for direction flow
         
         # Create the main Ui Frame
         self.create_ui_frame()    
@@ -79,7 +77,8 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
             canvas_height=200, 
             image_width=200, 
             image_height=200, 
-            padding=20) # Call the method to create the image frame
+            padding=20
+            ) # Call the method to create the image frame
         
     def create_labels(self):
         """
@@ -194,7 +193,7 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         """            
         # Create the root tkinter variable
         super().__init__(parent, *args, **kwargs)
-        self.controller = controller
+        self.controller = controller # Set the controller object for direction flow
         
         # Create the main Ui Frame
         self.create_ui_frame()    
@@ -225,9 +224,10 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
             image_path=logo_path, 
             canvas_width=100, 
             canvas_height=100, 
-            image_width=75, 
-            image_height=75, 
-            padding=20) # Call the method to create the image frame
+            image_width=90, 
+            image_height=90, 
+            padding=(80,10)
+            ) # Call the method to create the image frame
         
     def create_labels(self):
         """
@@ -235,10 +235,11 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function creates the labels for the main UI
         """
         # Stylize labels to match the image
-        Label(self.ui_frame, text="Username:", bg='white').place(relx=0.4, y=240, anchor="e")
-        Label(self.ui_frame, text="Password:", bg='white').place(relx=0.4, y=280, anchor="e")
-        Label(self.ui_frame, text="Password:", bg='white').place(relx=0.4, y=320, anchor="e")
-        Label(self.ui_frame, text="Email:", bg='white').place(relx=0.4, y=360, anchor="e")
+        Label(self.ui_frame, text="New User Credentials:", bg='white').place(relx=0.32, y=110, anchor="e")
+        Label(self.ui_frame, text="Username:", bg='white').place(relx=0.37, y=140, anchor="e")
+        Label(self.ui_frame, text="Password:", bg='white').place(relx=0.37, y=180, anchor="e")
+        Label(self.ui_frame, text="Password:", bg='white').place(relx=0.37, y=220, anchor="e")
+        Label(self.ui_frame, text="Email:", bg='white').place(relx=0.37, y=260, anchor="e")
 
     def create_entry_fields(self):
         """
@@ -252,10 +253,10 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         self.email_entry = Entry(self.ui_frame, width=30)
         
         # Position the entry fields at the center
-        self.username_entry.place(relx=0.6, y=240, anchor="center")
-        self.first_password_entry.place(relx=0.6, y=280, anchor="center")
-        self.second_password_entry.place(relx=0.6, y=320, anchor="center")
-        self.email_entry.place(relx=0.6, y=360, anchor="center")
+        self.username_entry.place(relx=0.57, y=140, anchor="center")
+        self.first_password_entry.place(relx=0.57, y=180, anchor="center")
+        self.second_password_entry.place(relx=0.57, y=220, anchor="center")
+        self.email_entry.place(relx=0.57, y=260, anchor="center")
         
         # Create the entry widget list
         self.entry_widget_list = [
@@ -271,9 +272,10 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function creates the buttons for the main UI
         """
         # Stylize buttons to match the image
-        Button(self.ui_frame, text="Exit", width=10, command=self.back_btn).place(relx=0.3, y=340, anchor="center")
-        #Button(self.ui_frame, text="New", width=10, command=self.add_new_user_btn).place(relx=0.5, y=340, anchor="center")
-        #Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=340, anchor="center")
+        Button(self.ui_frame, text="Generate", width=10, command=self.submit_btn).place(relx=0.9, y=180, anchor="e")
+        Button(self.ui_frame, text="Back", width=10, command=self.back_btn).place(relx=0.3, y=340, anchor="center")
+        Button(self.ui_frame, text="Reset", width=10, command=self.clear_entry).place(relx=0.5, y=340, anchor="center")
+        Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=340, anchor="center")
                                                                                                             
     def get_user_input(self):
         """ 
@@ -291,9 +293,9 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         # If valid, create a User object with the input
         self.user_input_list = [username, first_password, second_password, email]
             
-    def submit_button_click(self):
+    def submit_btn(self):
         """ 
-        Function Name: submit_button_click
+        Function Name: submit_btn
         Function Purpose: This function is executed once the user enters their user name and password
         """
         # Get the valid user input
@@ -347,9 +349,4 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function is executed once the user clicks on the exit button inside the result
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
         """       
-        # Hide the existing components inside the main container
-        for widget in self.winfo_children():
-            widget.pack_forget()
-            
-            # Load the frame that was previously displayed
-            login_screen = UserLogin_UiComposable()            
+        self.controller.show_frame("UserLogin_UiComposable")           

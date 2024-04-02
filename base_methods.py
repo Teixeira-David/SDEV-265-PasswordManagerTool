@@ -73,7 +73,7 @@ class Base_Ui_Methods():
         """
         # Create a canvas for the image at the top of the ui_frame
         self.canvas = Canvas(self.ui_frame, width=canvas_width, height=canvas_height, bg='white', highlightthickness=0)
-        self.canvas.pack(pady=padding)
+        self.canvas.place(x=padding[0], y=padding[1])
         
         # Load the logo image
         logo_path = image_path 
@@ -81,12 +81,8 @@ class Base_Ui_Methods():
         self.shield_logo = self.shield_logo.resize((image_width, image_height), Image.Resampling.LANCZOS)
         self.shield_photoimage = ImageTk.PhotoImage(self.shield_logo)
         
-        # Position for the upper left corner with a small offset
-        image_x = padding
-        image_y = padding
-
         # Create the image on the canvas with the northwest (upper left) anchor
-        self.canvas.create_image(image_x, image_y, anchor="nw", image=self.shield_photoimage)
+        self.canvas.create_image(0, 0, anchor="nw", image=self.shield_photoimage)
         
     def position_ui_frame(self):
         """
