@@ -23,180 +23,158 @@ import string
 from PIL import Image, ImageTk
 
 # Import project modules
-from user_object_class import User
+from Account_object_class import Account
 from password_object_class import PasswordWithPolicy
 from base_methods import BaseMethods
 
 #######################################################################################################
-# Add New User Class
-#######################################################################################################
+# Password Policy Record Table Creation
+#######################################################################################################         
 
-class AddNewUser_UiComposable(tk.Frame, BaseMethods):
-    """
-    Class Name: AddNewUser_UiComposable
-    Class Description: This class is the to add a new user to the application.
-    """
-    def __init__(self, *args, **kwargs):
+    def create_password_policy_table(self):
         """ 
-        Function Name: __init__
-        Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
-        """               
-        # Create the root tkinter variable
-        super().__init__(*args, **kwargs)
-        
-        # Create the main Ui Frame
-        self.create_ui_frame()    
-
-    def create_ui_frame(self):
-        """
-        Function Name: create_ui_frame
-        Description: Creates a fixed-size frame for UI elements.
-        """
-        # Adjust the size as needed
-        self.parent_ui_frame(600, 400)
-        
-        # Call this method to set up the header frame
-        self.create_logo_image()
-        
-        # Call the methods to set labels, entry fields, and buttons within this ui_frame 
-        self.create_labels()
-        self.create_entry_fields()
-        self.create_buttons()
-
-    def create_logo_image(self):
-        """
-        Function Name: create_logo_image
-        Description: Sets up the frame containing the application's logo.
-        """
-        logo_path = "ic_logo_small_medium.png" # logo file path. Should be stored in cwd
-        self.create_sml_ul_image_canvas(
-            image_path=logo_path, 
-            canvas_width=100, 
-            canvas_height=100, 
-            image_width=75, 
-            image_height=75, 
-            padding=20) # Call the method to create the image frame
-        
-    def create_labels(self):
-        """
-        Function Name: create_labels
-        Description: This function creates the labels for the main UI
-        """
-        # Stylize labels to match the image
-        Label(self.ui_frame, text="Username:", bg='white').place(relx=0.4, y=240, anchor="e")
-        Label(self.ui_frame, text="Password:", bg='white').place(relx=0.4, y=280, anchor="e")
-        Label(self.ui_frame, text="Password:", bg='white').place(relx=0.4, y=320, anchor="e")
-        Label(self.ui_frame, text="Email:", bg='white').place(relx=0.4, y=360, anchor="e")
-
-    def create_entry_fields(self):
-        """
-        Function Name: create_entry_fields
-        Description: This function creates the entry fields for the main UI
-        """
-        # Create and place entry fields to match the image, centered
-        self.username_entry = Entry(self.ui_frame, width=30)
-        self.first_password_entry = Entry(self.ui_frame, width=30, show='*')
-        self.second_password_entry = Entry(self.ui_frame, width=30, show='*')
-        self.email_entry = Entry(self.ui_frame, width=30)
-        
-        # Position the entry fields at the center
-        self.username_entry.place(relx=0.6, y=240, anchor="center")
-        self.first_password_entry.place(relx=0.6, y=280, anchor="center")
-        self.second_password_entry.place(relx=0.6, y=320, anchor="center")
-        self.email_entry.place(relx=0.6, y=360, anchor="center")
-        
-        # Create the entry widget list
-        self.entry_widget_list = [
-            self.username_entry, 
-            self.first_password_entry, 
-            self.second_password_entry, 
-            self.email_entry
-            ]
-        
-    def create_buttons(self):
-        """
-        Function Name: create_buttons
-        Description: This function creates the buttons for the main UI
-        """
-        # Stylize buttons to match the image
-        Button(self.ui_frame, text="Exit", width=10, command=self.back_btn).place(relx=0.3, y=340, anchor="center")
-        Button(self.ui_frame, text="New", width=10, command=self.add_new_user_btn).place(relx=0.5, y=340, anchor="center")
-        Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=340, anchor="center")
-                                                                                                            
-    def get_user_input(self):
-        """ 
-        Function Name: get_user_input
-        Function Purpose: This function gets and sets the user input.
-        """   
-        # This function would actually get input from GUI fields or console input
-        username = self.username_entry.get()
-        first_password = self.first_password_entry.get()
-        second_password = self.second_password_entry.get()
-        email = self.email_entry.get()
-        
-        # Call the function to validate the user input
-
-        # If valid, create a User object with the input
-        self.user_input_list = [username, first_password, second_password, email]
-            
-    def submit_button_click(self):
-        """ 
-        Function Name: submit_button_click
-        Function Purpose: This function is executed once the user enters their user name and password
-        """
-        # Get the valid user input
-        
-
+        Function Name: create_password_policy_table
+        Function Purpose: Create the password policy record Table and Z Tables inside the database
+        """          
         try:
-            # Attempt to create a User object with the provided credentials
+            # First check if connected to the database   
+            if not self.conn:
+                raise Exception("Database is not connected.")
+        
+            # Create the table
+            sqlTable = """ 
+                -- Create Password Policy Table
+                CREATE TABLE IF NOT EXISTS TPasswordPolicies 
+                (
+                    intPolicyID                         INTEGER NOT NULL
+                    ,intUserID                          INTEGER NOT NULL
+                    ,intMinCharLength                   INTEGER NOT NULL
+                    ,strRequiredChar                    VARCHAR(1000) NOT NULL
+                    ,intExpirePeriod                    INTEGER NOT NULL
+                    ,strModifiedReason                  VARCHAR(1000)
+                    ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
+                    ,CONSTRAINT TPasswordPolicies_PK PRIMARY KEY ( intPolicyID )               
+                );
+                """
+            # Create the audit table    
+            sqlAudit = f"""                
+                -- Create Z Table: Password Policy Table
+                CREATE TABLE IF NOT EXISTS Z_TPasswordPolicies 
+                (
+                    intPolicyAuditID                    INTEGER NOT NULL
+                    ,intPolicyID                        INTEGER NOT NULL
+                    ,intUserID                          INTEGER NOT NULL
+                    ,intMinCharLength                   INTEGER NOT NULL
+                    ,strRequiredChar                    VARCHAR(1000) NOT NULL
+                    ,intExpirePeriod                    INTEGER NOT NULL
+                    ,strUpdatedBy                       VARCHAR(225) NOT NULL DEFAULT '{self.currentAccount}'
+                    ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ,strAction                          VARCHAR(1) NOT NULL
+                    ,strModifiedReason                  VARCHAR(1000)
+                    
+                    ,CONSTRAINT Z_TPasswordPolicies_PK PRIMARY KEY (intPolicyAuditID)
+                );
+                """
+            # Create the table trigger    
+            sqlTrigger = f"""
+                -- Create Trigger: Password Policy Table - Insert Trigger
+                CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Insert
+                AFTER INSERT ON TPasswordPolicies
+                BEGIN
+                    INSERT INTO Z_TPasswordPolicies 
+                    (
+                        intPolicyID
+                        ,intUserID
+                        ,intMinCharLength
+                        ,strRequiredChar
+                        ,intExpirePeriod
+                        ,strUpdatedBy
+                        ,dtmUpdatedOn
+                        ,strAction
+                        ,strModifiedReason
+                    )
+                    VALUES 
+                    (
+                        NEW.intPolicyID
+                        ,NEW.intUserID
+                        ,NEW.intMinCharLength
+                        ,NEW.strRequiredChar
+                        ,NEW.intExpirePeriod
+                        ,'{self.currentAccount}'
+                        ,DATETIME('now')
+                        ,'I' -- Insert
+                        ,NEW.strModifiedReason
+                    );
+                END;
 
-            # At this point, the input is valid as per our setters
-            
-            # Now you would proceed with a database check here for getting the primary key ID's
-            
-            # Set the user content and prep for db dump
-            
-            # Delete the username and password entry fields so the data does not persist in some address in RAM
-            
-            # Destroy the window and open the main dashboard
-            
-            
-        except ValueError as e:
-            # If setters raise a ValueError, inform the user
-            messagebox.showwarning("Input Error", str(e))
-            # Here, clear the entries or highlight them to indicate an error
-            self.set_bg_to_white(self.entry_widget_list)                     
-            
-    def clear_entry(self):
-        """ 
-        Function Name: clear_entry
-        Function Purpose: This function is executed if the user clicks clear. The fields should be deleted
-        """
-        # Delete the content of the entry widgets
-        self.clear_entry_widget(self.entry_widget_list)
-        self.set_bg_to_white(self.entry_widget_list)
-        
-        # Return focus to first input
-        self.entry_widget_list[0].focus()
+                -- Create Trigger: Password Policy Table - Update Trigger
+                CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Update
+                AFTER UPDATE ON TPasswordPolicies
+                BEGIN
+                    INSERT INTO Z_TPasswordPolicies 
+                    (
+                        intPolicyID
+                        ,intUserID
+                        ,intMinCharLength
+                        ,strRequiredChar
+                        ,intExpirePeriod
+                        ,strUpdatedBy
+                        ,dtmUpdatedOn
+                        ,strAction
+                        ,strModifiedReason
+                    )
+                    VALUES 
+                    (
+                        NEW.intPolicyID
+                        ,NEW.intUserID
+                        ,NEW.intMinCharLength
+                        ,NEW.strRequiredChar
+                        ,NEW.intExpirePeriod
+                        ,'{self.currentAccount}'
+                        ,DATETIME('now')
+                        ,'U' -- Update
+                        ,NEW.strModifiedReason
+                    );
+                END;
 
-    def add_new_user(self):
-        """ 
-        Function Name: add_new_user
-        Function Purpose: This function executes when the user clicks on 'New' button to add a new user
-        """
-        # Destroy the UI Frame and its children widgets
-        self.destroy_child_frame()
-        
-        # Create the new user frame
-        
-    def back_button(self):
-        """ 
-        Function Name: exit_app_button
-        Function Purpose: This function is executed once the user clicks on the exit button inside the result
-        frame. If the user clicks 'Exit', the widow is destroyed and the user is sent back to main menu 
-        """       
-        # Destroy the UI Frame and its children widgets
-        self.destroy_child_frame()
-        
-        # Load the frame that was previously displayed
-        login_screen = UserLogin_UiComposable()
+                -- Create Trigger: Password Policy Table - Delete Trigger
+                CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Delete
+                AFTER DELETE ON TPasswordPolicies
+                BEGIN
+                    INSERT INTO Z_TPasswordPolicies 
+                    (
+                        intPolicyID
+                        ,intUserID
+                        ,intMinCharLength
+                        ,strRequiredChar
+                        ,intExpirePeriod
+                        ,strUpdatedBy
+                        ,dtmUpdatedOn
+                        ,strAction
+                        ,strModifiedReason
+                    )
+                    VALUES 
+                    (
+                        OLD.intPolicyID
+                        ,OLD.intUserID
+                        ,OLD.intMinCharLength
+                        ,OLD.strRequiredChar
+                        ,OLD.intExpirePeriod
+                        ,'{self.currentAccount}'
+                        ,DATETIME('now')
+                        ,'D' -- Delete
+                        ,OLD.strModifiedReason
+                    );
+                END;
+                """
+                
+            # Execute the SQL statements
+            Database.db_exe_statement(self, sqlTable)
+            Database.db_exe_statement(self, sqlAudit)
+            Database.db_exe_statement(self, sqlTrigger)    
+            
+            # Commit the changes 
+            self.conn.commit()
+
+        except sqlite3.Error as e:
+            print(f"Error creating Password Policy tables: {e}")
