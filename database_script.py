@@ -152,6 +152,8 @@ class Database():
                         
         # Create a ConfigParser instance
         config = configparser.ConfigParser()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(script_dir, 'config.ini')
         
         # Read the configuration file
         try:
@@ -199,13 +201,13 @@ class Database():
             # Set the default database to the latest backup database snapshot.
             db_fh.replace_bundled_db_with_backup(database_path, oldest_backup_db[1])            
             
-        # Update the session context
-        db_mgm_h.update_session_context(self.current_user)
-    
         # Connect to the database
         db_conn_h.db_connect()
 
-        
+                # Update the session context
+        db_mgm_h.update_session_context(self.current_user)
+    
+    
 #######################################################################################################
 # Database Connection Handler Class
 #######################################################################################################
@@ -321,10 +323,10 @@ class Database_File_Handler(Database):
         Function Purpose: Find a file path with the given name in the directory tree starting at start_path. 
         Returns the absolute path of the file if found in Main.
         """
-        if 'Main' not in start_path:
-            # Insert the 'Main' folder before the filename
-            directory, filename = os.path.split(start_path)
-            start_path = os.path.join(directory, 'Main', filename)
+        # if 'Main' not in start_path:
+        #     # Insert the 'Main' folder before the filename
+        #     directory, filename = os.path.split(start_path)
+        #     start_path = os.path.join(directory, 'Main', filename)
                     
         return start_path   
     
@@ -546,6 +548,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         
         self.view_dict = {
                 "vAccountsInfo": self.set_accounts_view,
+                "vAccountsInfo_": self.db_set_all_accounts_by_category_view,
             } 
         
     @staticmethod
@@ -747,7 +750,14 @@ class Database_Management_Handler(Database_Connection_Handler):
         for sql_view_name, set_method in self.view_dict.items():
             sql_view_name, sql_statement = set_method()
             full_view_name = f"{target_db}.{sql_view_name}" if target_db != "main" else sql_view_name
-            self.db_create_views(full_view_name, sql_statement)          
+            # Check the full_view_name to see if it is a list instead of a string
+            if isinstance(full_view_name, list):
+                for view_name in full_view_name:
+                    for sql in sql_statement:
+                        self.db_create_views(view_name, sql)
+                        break
+            else:
+                self.db_create_views(full_view_name, sql_statement)          
                 
     def db_create_views(self, view_name, sql):
         """
@@ -1045,7 +1055,7 @@ class Database_Management_Handler(Database_Connection_Handler):
             
         # Execute the SQL statements
         self.db_exe_statement(sql_table)
-        self.update_session_context(self.current_user)
+        #self.update_session_context(self.current_user)
     
     def create_user_table(self):
         """ 
@@ -1067,9 +1077,6 @@ class Database_Management_Handler(Database_Connection_Handler):
                 ,CONSTRAINT TUsers_PK PRIMARY KEY (intUserID)                 
             );
             """ 
-        # Execute the SQL statements
-        self.db_exe_statement(sql_table)
-
         # Create the audit table    
         sqlAudit = f"""                
             -- Create Z Table: User Table
@@ -1089,9 +1096,6 @@ class Database_Management_Handler(Database_Connection_Handler):
                 ,CONSTRAINT Z_TUsers_PK PRIMARY KEY (intUserAuditID)
             );
             """
-        # Execute the SQL statements
-        self.db_exe_statement(sqlAudit)
-        
         # Create the table trigger    
         sqlTrigger = f"""
             -- Create Trigger: User Table - Insert Trigger
@@ -1186,6 +1190,8 @@ class Database_Management_Handler(Database_Connection_Handler):
             """
             
         # Execute the SQL statements
+        self.db_exe_statement(sql_table)
+        self.db_exe_statement(sqlAudit)
         self.db_exe_statement(sqlTrigger)    
 
     def create_account_table(self):
@@ -1798,6 +1804,8 @@ class Database_Management_Handler(Database_Connection_Handler):
             'Finance', 
             'Personal', 
             ]
+        sql_view_list = []
+        sql_statement_list = []
         
         for category in categories:
             # Create the view names
@@ -1817,11 +1825,14 @@ class Database_Management_Handler(Database_Connection_Handler):
                             WHERE 
                                 TA.strCategory = '{category}';
                             """                    
-
+            # Append the created view to the list
+            sql_view_list.append(sql_view_name)
+            sql_statement_list.append(sql_statement)
+            
         # To debug the view
         # print(f"View '{sql_view_name}' created or already exists.")
         
-        return (sql_view_name, sql_statement)   
+        return (sql_view_list, sql_statement_list)   
             
     #######################################################################################################
     # Database Update Creation
