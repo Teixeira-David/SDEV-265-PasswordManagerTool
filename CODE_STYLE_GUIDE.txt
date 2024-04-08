@@ -27,7 +27,7 @@ Naming Conventions
 	•	Constants: Use ‘UPPER_CASE_WITH_UNDERSCORES’. Example: ‘VALID_EXPIRY_PERIODS’.
 
 Comments and Docstrings
-	•	Follow PEP 257 for docstring conventions. -> link (https://peps.python.org/pep-0257/)
+	•	Follow PEP 257 for docstring conventions. -> link
 	•	Use docstrings to explain the purpose of classes and methods.
 	•	Inline comments should be used sparingly and only when necessary to explain complex code.
 
@@ -68,3 +68,8 @@ SQLite3/Python Programming Styles
 	◦	Include comments (‘--’) within SQL statements to explain the purpose of the tables, columns, and relationships.
 	◦	Function Naming: use ‘lower_case_with_underscores’ fore database functions to maintain consistency. 
 	◦	Error Handling in DB Operations: Catch ‘sqlite3.Error’ exceptions to handle database errors gracefully and log meaningful error messages. 
+	◦	Implement a centralized logging mechanism for errors encountered during database operations. Log detailed error messages, including the time of occurrence and relevant context, to aid in debugging and maintenance. Capture not only ‘sqlite3.Error’ exceptions but also any other critical exceptions that could impact the database integrity or performance.
+	◦	Validate all inputs or external data before processing them in the database. 
+	◦	Sanitize data by using parameterized queries or prepared statements, especially when incorporating user-generated content into SQL commands. Both practices help to protect against SQL injection attacks and handle data safely.
+	◦	Write unit tests for all database operations, focusing on both normal behavior and edge cases. Use SQLite’s in-memory database feature for faster test execution and isolation.
+	◦	Ensure that the development environment closely mirrors the production environment, particularly regarding the database version and configurations. 

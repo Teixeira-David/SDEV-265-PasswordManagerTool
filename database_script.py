@@ -710,6 +710,9 @@ class Database_Management_Handler(Database_Connection_Handler):
         # Create the views
         self.db_load_views()
 
+        # Create the test data and insert the data into the database -> Make sure to comment this out for production
+        self.db_load_test_data()
+        
     def db_load_tables(self):
         """ 
         Function Name: db_load_tables
@@ -724,6 +727,18 @@ class Database_Management_Handler(Database_Connection_Handler):
         """              
         self.set_views()
 
+    def db_load_test_data(self):
+        """ 
+        Function Name: db_load_test_data
+        Function Purpose: Loads all the tables with test data to the db. This function should be used only for 
+        testing purposes and to be removed before production.
+        """                
+        self.insert_user_test_data()
+        self.insert_account_test_data()
+        self.insert_password_policy_test_data()
+        self.insert_password_history_test_data()
+        self.insert_backup_log_test_data()
+        
     def set_tables(self):
         """ 
         Function Name: set_tables
@@ -752,10 +767,8 @@ class Database_Management_Handler(Database_Connection_Handler):
             full_view_name = f"{target_db}.{sql_view_name}" if target_db != "main" else sql_view_name
             # Check the full_view_name to see if it is a list instead of a string
             if isinstance(full_view_name, list):
-                for view_name in full_view_name:
-                    for sql in sql_statement:
-                        self.db_create_views(view_name, sql)
-                        break
+                for i, view_name in enumerate(full_view_name):
+                    self.db_create_views(view_name, sql_statement[i])
             else:
                 self.db_create_views(full_view_name, sql_statement)          
                 
@@ -875,14 +888,14 @@ class Database_Management_Handler(Database_Connection_Handler):
             count = cursor.fetchone()[0]
 
             # If the table is empty, insert new values
-            if (count == 0):
+            if (count == 0) or key_id is None:
                 # First check if the prim key is none
                 if not key_id:
                     # Get the max primary key
                     key_id = self.get_max_prim_keys(table_name, prim_id)
                     
                 # Insert the prim_id into the first position of the values list
-                table_col_list.insert(0, prim_id)
+                table_col_list.insert(0, prim_id) if count == 0 else table_col_list
                 table_values_list.insert(0, key_id)
                 insert_params = (table_name, table_col_list, table_values_list)
                 self.insert_values(insert_params)
@@ -1088,7 +1101,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                 ,strUserPassword                    VARCHAR(1000) NOT NULL
                 ,strUserEmail                       VARCHAR(1000) NOT NULL
                 ,dtmRegistrationDate                DATETIME DEFAULT CURRENT_TIMESTAMP
-                ,strUpdatedBy                       VARCHAR(225) NOT NULL 
+                ,strUpdatedBy                       VARCHAR(225) NOT NULL
                 ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
                 ,strAction                          VARCHAR(1) NOT NULL
                 ,strModifiedReason                  VARCHAR(1000)
@@ -1121,7 +1134,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.strUserPassword
                     ,NEW.strUserEmail
                     ,DATETIME('now')
-                    ,'{self.current_user}'
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'I' -- Insert
                     ,NEW.strModifiedReason
@@ -1151,7 +1164,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.strUserPassword
                     ,NEW.strUserEmail
                     ,DATETIME('now')
-                    ,'{self.current_user}'
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'U' -- Update
                     ,NEW.strModifiedReason
@@ -1181,7 +1194,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,OLD.strUserPassword
                     ,OLD.strUserEmail
                     ,DATETIME('now')
-                    ,'{self.current_user}'
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'D' -- Delete
                     ,OLD.strModifiedReason
@@ -1253,7 +1266,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     intAccountID
                     ,intUserID
                     ,strAppName
-                    ,strAccountName
+                    ,strAppUserName
                     ,strAppPassword
                     ,strAppEmail
                     ,strCategory
@@ -1270,13 +1283,12 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.intUserID
                     ,NEW.strAppName
                     ,NEW.strAppUserName
-                    ,NEW.strAccountName
                     ,NEW.strAppPassword
                     ,NEW.strAppEmail
                     ,NEW.strCategory
                     ,NEW.strNotes
                     ,DATETIME('now')
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'I' -- Insert
                     ,NEW.strModifiedReason
@@ -1315,7 +1327,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.strCategory
                     ,NEW.strNotes
                     ,DATETIME('now')
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'U' -- Update
                     ,NEW.strModifiedReason
@@ -1353,7 +1365,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,OLD.strCategory
                     ,OLD.strNotes
                     ,DATETIME('now')
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'D' -- Delete
                     ,OLD.strModifiedReason
@@ -1377,13 +1389,13 @@ class Database_Management_Handler(Database_Connection_Handler):
             CREATE TABLE IF NOT EXISTS TPasswordPolicies 
             (
                 intPolicyID                         INTEGER NOT NULL
-                ,intUserID                          INTEGER NOT NULL
+                ,intAccountID                       INTEGER NOT NULL
                 ,intMinCharLength                   INTEGER NOT NULL
                 ,strRequiredChar                    VARCHAR(1000) NOT NULL
                 ,intExpirePeriod                    INTEGER NOT NULL
                 ,strModifiedReason                  VARCHAR(1000)
                 
-                ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
+                ,FOREIGN KEY ( intAccountID ) REFERENCES TAccounts ( intAccountID )
                 ,CONSTRAINT TPasswordPolicies_PK PRIMARY KEY ( intPolicyID )               
             );
             """
@@ -1394,7 +1406,7 @@ class Database_Management_Handler(Database_Connection_Handler):
             (
                 intPolicyAuditID                    INTEGER NOT NULL
                 ,intPolicyID                        INTEGER NOT NULL
-                ,intUserID                          INTEGER NOT NULL
+                ,intAccountID                       INTEGER NOT NULL
                 ,intMinCharLength                   INTEGER NOT NULL
                 ,strRequiredChar                    VARCHAR(1000) NOT NULL
                 ,intExpirePeriod                    INTEGER NOT NULL
@@ -1415,7 +1427,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                 INSERT INTO Z_TPasswordPolicies 
                 (
                     intPolicyID
-                    ,intUserID
+                    ,intAccountID
                     ,intMinCharLength
                     ,strRequiredChar
                     ,intExpirePeriod
@@ -1427,11 +1439,11 @@ class Database_Management_Handler(Database_Connection_Handler):
                 VALUES 
                 (
                     NEW.intPolicyID
-                    ,NEW.intUserID
+                    ,NEW.intAccountID
                     ,NEW.intMinCharLength
                     ,NEW.strRequiredChar
                     ,NEW.intExpirePeriod
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'I' -- Insert
                     ,NEW.strModifiedReason
@@ -1445,7 +1457,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                 INSERT INTO Z_TPasswordPolicies 
                 (
                     intPolicyID
-                    ,intUserID
+                    ,intAccountID
                     ,intMinCharLength
                     ,strRequiredChar
                     ,intExpirePeriod
@@ -1457,11 +1469,11 @@ class Database_Management_Handler(Database_Connection_Handler):
                 VALUES 
                 (
                     NEW.intPolicyID
-                    ,NEW.intUserID
+                    ,NEW.intAccountID
                     ,NEW.intMinCharLength
                     ,NEW.strRequiredChar
                     ,NEW.intExpirePeriod
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'U' -- Update
                     ,NEW.strModifiedReason
@@ -1475,11 +1487,11 @@ class Database_Management_Handler(Database_Connection_Handler):
                 INSERT INTO Z_TPasswordPolicies 
                 (
                     intPolicyID
-                    ,intUserID
+                    ,intAccountID
                     ,intMinCharLength
                     ,strRequiredChar
                     ,intExpirePeriod
-                    ,strUpdatedBy
+                    ,strUpdatedBye
                     ,dtmUpdatedOn
                     ,strAction
                     ,strModifiedReason
@@ -1487,11 +1499,11 @@ class Database_Management_Handler(Database_Connection_Handler):
                 VALUES 
                 (
                     OLD.intPolicyID
-                    ,OLD.intUserID
+                    ,OLD.intAccountID
                     ,OLD.intMinCharLength
                     ,OLD.strRequiredChar
                     ,OLD.intExpirePeriod
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'D' -- Delete
                     ,OLD.strModifiedReason
@@ -1502,7 +1514,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         # Execute the SQL statements
         self.db_exe_statement(sql_table)
         self.db_exe_statement(sqlAudit)
-        self.db_exe_statement(sqlTrigger) 
+        self.db_exe_statement(sqlTrigger)
             
     def create_password_history_table(self):
         """ 
@@ -1564,7 +1576,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.intAccountID
                     ,NEW.strOldPassword
                     ,DATETIME('now')
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'I' -- Insert
                     ,NEW.strModifiedReason
@@ -1592,7 +1604,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.intAccountID
                     ,NEW.strOldPassword
                     ,DATETIME('now')
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'U' -- Update
                     ,NEW.strModifiedReason
@@ -1620,7 +1632,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,OLD.intAccountID
                     ,OLD.strOldPassword
                     ,DATETIME('now')
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'D' -- Delete
                     ,OLD.strModifiedReason
@@ -1693,7 +1705,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.intUserID
                     ,NEW.dtmBackupDate
                     ,NEW.strFilePath
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'I' -- Insert
                     ,NEW.strModifiedReason
@@ -1720,7 +1732,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.intUserID
                     ,NEW.dtmBackupDate
                     ,NEW.strFilePath
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'U' -- Update
                     ,NEW.strModifiedReason
@@ -1747,7 +1759,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,OLD.intUserID
                     ,OLD.dtmBackupDate
                     ,NEW.strFilePath
-                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'D' -- Delete
                     ,OLD.strModifiedReason
@@ -1819,7 +1831,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                                 ,TA.strAppEmail                                     AS 'Email'
                                 ,TA.strAppPassword                                  AS 'Account Password'
                                 ,TA.dtmLastUpdate                                   AS 'Last Update'
-                                ,TA.strCategory                                     AS 'Category'
+                                ,TA.strNotes                                        AS 'Notes'
                             FROM 
                                 TAccounts AS TA
                             WHERE 
@@ -1832,7 +1844,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         # To debug the view
         # print(f"View '{sql_view_name}' created or already exists.")
         
-        return (sql_view_list, sql_statement_list)   
+        return (sql_view_list, sql_statement_list)  
             
     #######################################################################################################
     # Database Update Creation
@@ -1858,3 +1870,170 @@ class Database_Management_Handler(Database_Connection_Handler):
 
         # Call update_values with the prepared parameters
         self.insert_or_update_values(params)
+
+    #######################################################################################################
+    # Database Testing Data
+    #######################################################################################################         
+
+    def insert_user_test_data(self):
+        """ 
+        Function Name: insert_user_test_data
+        Function Purpose: Insert the user test data into the tables for debugging and testing purposes
+        """          
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TUsers'
+        table_col_list = [
+            'strUserName', 
+            'strUserPassword', 
+            'strUserEmail', 
+            'dtmRegistrationDate', 
+            'strModifiedReason'
+            ]
+        table_values_list = [
+            'cipher_admin',
+            'admin123',
+            'admin@ciphershield.com',
+            todays_date,
+            'Test Data Insertion',
+        ]
+        prim_id = 'intUserID'
+        
+        # Package parameters
+        params = (table_name, table_col_list, table_values_list, prim_id)
+        # Call insert_or_update_values with the prepared parameters
+        self.insert_or_update_values(params)
+        
+    def insert_account_test_data(self):
+        """ 
+        Function Name: insert_account_test_data
+        Function Purpose: Insert the user test data into the tables for debugging and testing purposes
+        """          
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TAccounts'
+        table_col_list = [
+            'intUserID', 
+            'strAppName', 
+            'strAppUserName', 
+            'strAppPassword', 
+            'strAppEmail',
+            'strCategory',
+            'strNotes',
+            'dtmLastUpdate',
+            'strModifiedReason',
+            ]
+        prim_id = 'intAccountID'
+        
+        # Define data to be inserted
+        table_values_list = [
+            [1, 'Facebook', 'fbuser123', 'fbpass456', 'admin@ciphershield.com', 'Social_Media', '', todays_date, 'Test Data Insertion'],
+            [1, 'Twitter', 'twitteruser123', 'twitterpass789', 'admin@ciphershield.com', 'Social_Media', '', todays_date, 'Test Data Insertion'],
+            [1, 'Google', 'googleuser123', 'googlepass789', 'admin@ciphershield.com', 'Web_Services', '', todays_date, 'Test Data Insertion'],
+            [1, 'PNC Bank', 'pncuser123', 'pncpass789', 'admin@ciphershield.com', 'Finance', '', todays_date, 'Test Data Insertion'],
+            [1, 'Fitness Tracking App', 'fitbituser123', 'fitbitpass789', 'admin@ciphershield.com', 'Personal', '', todays_date, 'Test Data Insertion']
+        ]
+        
+        # Insert each set of data into the table
+        for values in table_values_list:
+            params = (table_name, table_col_list, values, prim_id)
+            self.insert_or_update_values(params)
+            
+    def insert_password_policy_test_data(self):
+        """ 
+        Function Name: insert_password_policy_test_data
+        Function Purpose: Insert the password policy test data into the tables for debugging and testing purposes
+        """          
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TPasswordPolicies'
+        table_col_list = [
+            'intAccountID', 
+            'intMinCharLength', 
+            'strRequiredChar', 
+            'intExpirePeriod', 
+            'strModifiedReason',
+            ]
+        prim_id = 'intPolicyID'
+        
+        # Define data to be inserted
+        table_values_list = [
+            [1, 4, 'Uppercase, Lowercase,', 30, 'Test Data Insertion'],
+            [2, 8, 'Number, Special Character', 30, 'Test Data Insertion'],
+            [3, 12, 'Uppercase, Lowercase, Number', 180, 'Test Data Insertion'],
+            [4, 16, 'Lowercase, Number, Special Character', 365, 'Test Data Insertion'],
+            [5, 32, 'Uppercase, Lowercase, Number, Special Character', 90, 'Test Data Insertion'],
+        ]
+        
+        # Insert each set of data into the table
+        for values in table_values_list:
+            params = (table_name, table_col_list, values, prim_id)
+            self.insert_or_update_values(params)
+
+    def insert_password_history_test_data(self):
+        """ 
+        Function Name: insert_password_history_test_data
+        Function Purpose: Insert the password history test data into the tables for debugging and testing purposes
+        """    
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+              
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TPasswordHistory'
+        table_col_list = [
+            'intAccountID', 
+            'strOldPassword', 
+            'dtmDateChanged',  
+            'strModifiedReason',
+            ]
+        prim_id = 'intPasswordHistoryID'
+        
+        # Define data to be inserted
+        table_values_list = [
+            [1, 'pass123', todays_date, 'Initial password'],
+            [1, 'newpass456', todays_date, 'Password change'],
+            [2, 'oldpassword', todays_date, 'Initial password'],
+            [2, 'newpassword', todays_date, 'Password change'],
+            [3, 'abc@123', todays_date, 'Initial password'],
+            [3, 'xyz@789', todays_date, 'Password change'],
+            [4, 'p@ssw0rd', todays_date, 'Initial password'],
+            [4, 'newpass123', todays_date, 'Password change'],
+            [5, 'securepass', todays_date, 'Initial password'],
+            [5, 'updatedpass', todays_date, 'Password change'],
+        ]
+            
+        # Insert each set of data into the table
+        for values in table_values_list:
+            params = (table_name, table_col_list, values, prim_id)
+            self.insert_or_update_values(params)
+            
+    def insert_backup_log_test_data(self):
+        """ 
+        Function Name: insert_backup_log_test_data
+        Function Purpose: Insert the backup db log test data into the tables for debugging and testing purposes
+        """    
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TBackupDBs'
+        table_col_list = [
+            'intUserID', 
+            'dtmBackupDate', 
+            'strFilePath',  
+            'strModifiedReason',
+            ]
+        prim_id = 'intBackupID'
+        
+        # Define data to be inserted
+        table_values_list = [
+            [1, todays_date, self.db_backup_path, 'Test Data Insertion'],
+        ]
+            
+        # Insert each set of data into the table
+        for values in table_values_list:
+            params = (table_name, table_col_list, values, prim_id)
+            self.insert_or_update_values(params)
