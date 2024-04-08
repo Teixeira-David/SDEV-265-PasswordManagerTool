@@ -13,10 +13,12 @@ for the most up-to-date version.
 
 # Import Python Libraries
 import configparser
+from datetime import date, datetime
 import getpass
 import glob
 import os
 import platform
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -37,7 +39,7 @@ class Database():
     Class Name: Database
     Class Description: This class is the main NOSQL database (SQLite3) for the entire program
     """    
-    def __init__(self, db_name=None, db_path=None, db_backup_path=None, records_file_path=None, db_password=None):
+    def __init__(self, db_name=None, db_path=None, db_backup_path=None, db_password=None):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes 
@@ -45,14 +47,13 @@ class Database():
         self.db_name = db_name
         self.db_path = db_path
         self.db_backup_path = db_backup_path
-        self.records_file_path = records_file_path
         self.db_password = db_password
         self.conn = None
         self.current_user = None
         
     # Create a string of the database info
     def __str__(self):
-        return f"Database(db_name={self.db_name}, db_path={self.db_path}, db_backup_path={self.db_backup_path}, records_file_path={self.records_file_path}, db_password=PROTECTED)"
+        return f"Database(db_name={self.db_name}, db_path={self.db_path}, db_backup_path={self.db_backup_path}, db_password=PROTECTED)"
     
     # Property decorator object get function to access private db_name
     @property
@@ -69,11 +70,6 @@ class Database():
     def db_backup_path(self):
         return self._db_backup_path
 
-    # Property decorator object get function to access private records_file_path
-    @property
-    def records_file_path(self):
-        return self._records_file_path
-    
     # Property decorator object get function to access private db_password
     @property
     def db_password(self):
@@ -107,15 +103,6 @@ class Database():
         self._db_backup_path = value
 
     # setter method 
-    @records_file_path.setter 
-    def records_file_path(self, value): 
-        if not isinstance(value, str):
-            raise TypeError('Records file path name must be a string.')
-        if not value.strip():
-            raise ValueError('Records file path name cannot be empty.')
-        self._records_file_path = value 
-        
-    # setter method 
     @db_password.setter 
     def db_password(self, value):
         if not isinstance(value, str):
@@ -123,20 +110,131 @@ class Database():
         if not value.strip():
             raise ValueError('Database password cannot be empty.')
         self._db_password = value
+            
+    def get_current_user(self):
+        """
+        Function Name: get_current_user
+        Function Purpose: This function used to get the current user name and return to the database or other modules
+        to store the name of the current user.
+        """   
+        # Select the dropbox item 
+        current_user = getpass.getuser()
+        return current_user
 
+    def db_set_database_attr(self):
+        """ 
+        Function Name: db_set_database_attr
+        Function Abstract: Set the database attributes from the configuration file.
+        """      
+
+        # Init the database file handler
+        db_fh = Database_File_Handler()
+        
+        # Ensure RecordsDir exists on the desktop
+        backup_dir = os.path.join(db_fh.get_os_desktop(), db_fh.db_backups_dir)
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+            
+        # Set the records directory path
+        self.db_backup_path = backup_dir
+        
+        # First get the database and config file from the primary package
+        config_path = db_fh.resource_path('config.ini')
+        database_path = db_fh.resource_path('cipher_shield.db')
+        
+        # Check if the config path exists, if not None, proceed to extract the data from the config file
+        if not config_path:
+            return
+
+        # Make sure to comment this out when pushed to production    
+        config_path = db_fh.config_file_path(config_path)
+        database_path = db_fh.config_file_path(database_path)
+                        
+        # Create a ConfigParser instance
+        config = configparser.ConfigParser()
+        
+        # Read the configuration file
+        try:
+            config.read(config_path)
+            config_db_name = config.get('Database', 'database')
+            config_db_pswrd = config.get('Database', 'password')
+        except configparser.NoSectionError as e:
+            print(f"Section error: {e}")
+            return
+        except configparser.NoOptionError as e:
+            print(f"Option error: {e}")
+            return
+
+        # Set the database password and find the oldest .bak file. If no .bak file, create the default database.
+        db = Database(db_name=config_db_name, db_path=database_path, db_password=config_db_pswrd)
+        self.db_name = db.db_name
+        self.db_path = db.db_path
+        self.db_password = db.db_password     
+        self.current_user = db.get_current_user()
+
+        # Instantiate the class db connection handler
+        db_conn_h = Database_Connection_Handler()
+
+        # Instantiate the class db management handler
+        db_mgm_h = Database_Management_Handler()
+
+        # Instantiate the  class   
+        oldest_backup_db = db_fh.find_last_backup_file()            
+
+        # Check if the database path exists, if not None, proceed to make the database
+        if not oldest_backup_db:
+            # Check if the DB file exists, if not, create and execute the database script
+            if not os.path.exists(database_path): 
+                # Write the database script
+                db_mgm_h.db_create_script()
+                
+                # Close the connection after creating it
+                db_conn_h.db_disconnect()
+        
+        # If the .bak file exists, proceed to connect to it
+        else:
+            # Ensure you're disconnected from the DB before modifying the file
+            db_conn_h.db_disconnect()
+                        
+            # Set the default database to the latest backup database snapshot.
+            db_fh.replace_bundled_db_with_backup(database_path, oldest_backup_db[1])            
+            
+        # Update the session context
+        db_mgm_h.update_session_context(self.current_user)
+    
+        # Connect to the database
+        db_conn_h.db_connect()
+
+        
+#######################################################################################################
+# Database Connection Handler Class
+#######################################################################################################
+
+class Database_Connection_Handler(Database):
+    """
+    Class Name: Database_Connection_Handler
+    Class Description: This class is the main NOSQL database (SQLite3) for the entire program
+    """    
+    def __init__(self):
+        """ 
+        Function Name: __init__
+        Function Purpose: Instantiate the class objects and attributes 
+        """
+        self.conn = None
+        
     def db_connect(self):
         """ 
         Function Name: db_connect
         Function Purpose: Disconnect the SQLite database 
         """  
-        if not self._db_path:
+        # Access to db_path
+        if not self.db_path:
             raise ValueError("Database path has not been set.")
         try:
-            self.conn = sqlite3.connect(self._db_path)
-            self.set_no_count_on()
-            self.set_foreign_key_on()
+            self.conn = sqlite3.connect(self.db_path)
         except sqlite3.Error as e:
             print(f"Error connecting to the database: {e}")
+            raise e
             
     def db_disconnect(self):
         """ 
@@ -152,7 +250,7 @@ class Database():
         Function Purpose: Set NOCOUNT ON for the SQLite database
         """
         sql = "PRAGMA count_changes = OFF;"
-        self.dbExeStatement(sql)
+        self.db_execute_statement(sql)
 
     def set_foreign_key_on(self):
         """
@@ -161,8 +259,21 @@ class Database():
         """
         # Enable foreign keys support
         sql = "PRAGMA foreign_keys = ON;"
-        self.dbExeStatement(sql)
-        
+        self.db_execute_statement(sql)
+
+    def db_execute_statement(self, sql):
+        """
+        Function Name: db_execute_statement
+        Function Purpose: Execute the given SQL statement
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            self.conn.commit()
+            cursor.close()
+        except sqlite3.Error as e:
+            print(f"Error executing SQL statement: {sql}, Error: {e}")
+            
     def db_initialize(self):
         """ 
         Function Name: db_initialize
@@ -170,39 +281,40 @@ class Database():
         """        
         self.set_no_count_on()
         self.set_foreign_key_on()  
+
+#######################################################################################################
+# Database File Handler Class
+#######################################################################################################
+
+class Database_File_Handler(Database):
+    """
+    Class Name: Database_File_Handler
+    Class Description: This class is the main NOSQL database (SQLite3) for the entire program
+    """    
+    def __init__(self):
+        """ 
+        Function Name: __init__
+        Function Purpose: Instantiate the class objects and attributes 
+        """    
+        self.db_backups_dir = "cipher_shield_backups"
         
+    @staticmethod
     def get_os_desktop():
         """
         Function Name: get_os_desktop
-        Function Abstract: This function determines the os desktop dir and returns the desktop path
+        Function Description: This function determines the os desktop dir and returns the desktop path
         """              
         # Get the operating system
         operating_system = platform.system()
     
         # Determine the desktop path based on the operating system
-        if operating_system == 'Windows':
-            # Code for Windows
-            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-        elif operating_system == 'Linux' or operating_system == 'Darwin':
-            # Code for Linux and macOS (Darwin)
-            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        if operating_system in ['Windows', 'Linux', 'Darwin']:
+            return os.path.join(os.path.expanduser("~"), "Desktop")
         else:
-            # For unknown or unsupported operating systems
             print(f"Unsupported operating system: {operating_system}")
-            return None
-        
-        return desktop_path        
-    
-    def get_current_user(self):
-            """
-            Function Name: get_current_user
-            Function Purpose: This function used to get the current user name and return to the database or other modules
-            to store the name of the current user.
-            """   
-            # Select the dropbox item 
-            current_user = getpass.getuser()
-            self.current_user = current_user
+            return None       
 
+    @staticmethod
     def config_file_path(start_path=None):
         """
         Function Name: config_file_path
@@ -216,6 +328,7 @@ class Database():
                     
         return start_path   
     
+    @staticmethod
     def find_file(file_name, start_path=None):
         """
         Function Name: find_file
@@ -227,6 +340,7 @@ class Database():
                 return os.path.abspath(os.path.join(dirpath, file_name))
         return None 
     
+    @staticmethod
     def resource_path(relative_path):
         """
         Function Name: resource_path
@@ -245,6 +359,9 @@ class Database():
         Function Name: replace_bundled_db_with_backup
         Function Abstract: This function replaces the default database with the backup database snapshot.
         """            
+        # Declare Local Variables
+        temp_file_name = 'temp_backup_cipher_shield_database.db'
+        
         # Check the backup file's existence and its extension
         if not os.path.exists(backup_path) or not backup_path.endswith('.bak'):
             print(f"Invalid backup file: {backup_path}")
@@ -258,7 +375,7 @@ class Database():
         shutil.copy2(bundled_db_path, temp_db_path)
 
         # Rename the .bak file to .db, then overwrite the temporary copy
-        temp_backup_db_path = os.path.join(os.path.dirname(backup_path), 'temp_backup_cipher_shield_database.db')
+        temp_backup_db_path = os.path.join(os.path.dirname(backup_path), temp_file_name)
         os.rename(backup_path, temp_backup_db_path)
 
         try:
@@ -282,22 +399,24 @@ class Database():
             if os.path.exists(temp_db_path):
                 os.remove(temp_db_path)
 
-    def find_oldest_backup_file(self):
+    def find_last_backup_file(self):
         """ 
-        Function Name: find_oldest_backup_file
+        Function Name: find_last_backup_file
         Function Purpose: Find the oldest .zip file matching the pattern cipher_shield_database.db_YYYYMMDD_HHMMSS.zip 
             in the specified backup directory and create a copy of the unzipped database.
-        """         
-        backup_dir = os.path.join(self.db_backup_path, "BackupDir")
+        """   
+        # Declare Local Variables  
+        backup_dir = os.path.join(self.db_backup_path)
 
+        # Check if the backup directory exists
         if not os.path.exists(backup_dir):
-            print(f"'BackupDir' not found at: {backup_dir}")
+            print(f"'cipher_shield_backups' directory not found at: {backup_dir}")
             return None
 
-        # First, check the contents of BackupDir for .zip files
+        # First, check the contents of back up dir for .zip files
         zip_files = glob.glob(f"{backup_dir}/cipher_shield_database.db_????????_??????.zip")
 
-        # If no .zip files were found in BackupDir, check its subdirectories
+        # If no .zip files were found in back up dir, check its subdirectories
         if not zip_files:
             zip_files = glob.glob(f"{backup_dir}/**/cipher_shield_database.db_????????_??????.zip", recursive=True)
 
@@ -305,14 +424,15 @@ class Database():
         if not zip_files:
             return None
 
-        oldest_zip = max(zip_files, key=os.path.getctime)
+        # Find the newest .zip file based on creation time
+        last_zip = max(zip_files, key=os.path.getctime)
         
         # Assuming the destination directory is the same as backup_dir, adjust as needed
         decryption_password = self.db_password
-        oldest_backup_file = self.unzip_decrypt(oldest_zip, backup_dir, decryption_password)
+        last_backup_file = self.unzip_decrypt(last_zip, backup_dir, decryption_password)
 
         # Constructing the path to the unzipped database file based on the zip file's name
-        unzipped_db_filename = os.path.basename(oldest_backup_file)
+        unzipped_db_filename = os.path.basename(last_backup_file)
         unzipped_db_path = os.path.join(backup_dir, unzipped_db_filename)
 
         # Copy the unzipped database to a new file
@@ -320,6 +440,7 @@ class Database():
 
         return db.db_name, db.db_path
     
+    @staticmethod
     def zip_encrypt(directory_path, zip_file_path, password):
         """ 
         Function Name: zip_encrypt
@@ -333,7 +454,8 @@ class Database():
             if password:
                 zipf.setpassword(bytes(password, 'utf-8'))
             zipf.write(directory_path, os.path.basename(directory_path))
-            
+    
+    @staticmethod
     def unzip_decrypt(zip_file_path, dest_dir, password):
         """ 
         Function Name: unzip_decrypt
@@ -393,21 +515,61 @@ class Database():
         elif sys.platform.startswith('win32'):
             # Windows (using Explorer)
             subprocess.call(['start', dirPath], shell=True)
-            
-    def check_table_exists(cursor, table_name, db_alias="main"):
+
+
+#######################################################################################################
+# Database Management Handler Class
+#######################################################################################################
+
+class Database_Management_Handler(Database_Connection_Handler):
+    """
+    Class Name: Database_Management_Handler
+    Class Description: This class is the main NOSQL database (SQLite3) for the entire program
+    """    
+    def __init__(self):
+        """ 
+        Function Name: __init__
+        Function Purpose: Instantiate the class objects and attributes 
         """
-        Function Name: check_table_exists
-        Function Purpose: Check if a table exists in the currently connected database.
-        """        
+        # First connect to the db
+        self.conn = None
+
+        # Dictionary mapping table names to functions to be executed if those tables are missing
+        self.table_dict = {
+                "TSessionContext": self.create_session_table,
+                "TUsers": self.create_user_table,
+                "TAccounts": self.create_account_table,
+                "TPasswordPolicies": self.create_password_policy_table,
+                "TPasswordHistory": self.create_password_history_table,
+                "TBackupDBs": self.create_backup_db_records_table,
+            }
+        
+        self.view_dict = {
+                "vAccountsInfo": self.set_accounts_view,
+            } 
+        
+    @staticmethod
+    def check_type_exists(cursor, type_name, flag, db_alias="main"):
+        """
+        Function Name: check_type_exists
+        Function Purpose: Check if a type (table, view, trigger, etc.) exists in the currently connected database.
+        """ 
+        # Check if the flag is a valid type
+        if flag not in ["table", "view", "trigger"]:
+            print(f"Invalid type flag: {flag}")
+            return False
+        
+        # Try to check if the type exists and if not return False    
         try:
-            query = f"SELECT name FROM {db_alias}.sqlite_master WHERE type='table';"
+            query = f"SELECT name FROM {db_alias}.sqlite_master WHERE type='{flag}';"
             cursor.execute(query)
-            tables = cursor.fetchall()
-            # Print the tables for debugging purposes
-            # print(f"Tables in {db_alias} database: {[table[0] for table in tables]}")
+            objects = cursor.fetchall()
             
-            # Check if the table name exists in the list of tables
-            if any(table[0] == table_name for table in tables):
+            # Print the items for debugging purposes
+            print(f"{flag} in {db_alias} database: {[obj[0] for obj in objects]}")
+            
+            # Check if the type name exists in the list of objects
+            if any(type[0] == type_name for type in objects):
                 return True
             else:
                 return False
@@ -416,36 +578,12 @@ class Database():
             print(f"Error checking table existence: {e}")
             return False
         
-    def check_view_exists(cursor, view_name, db_alias="main"):
-        """
-        Function Name: check_view_exists
-        Function Purpose: Check if a view exists in the currently connected database.
-        """
-        try:
-            # Modify the query to check for views instead of tables
-            query = f"SELECT name FROM {db_alias}.sqlite_master WHERE type='view';"
-            cursor.execute(query)
-            views = cursor.fetchall()
-
-            # Check if the view name exists in the list of views
-            if any(view[0] == view_name for view in views):
-                return True
-            else:
-                return False
-
-        except sqlite3.Error as e:
-            print(f"Error checking view existence: {e}")
-            return False
-        
     def merge_databases(self, bundled_db_path, temp_db_path, backup_db_path):
         """
         Function Name: merge_databases
         Function Purpose: Merge new tables to the rolling database.
         """
         try:
-            # Get the current user 
-            self.Get_Current_User()
-            
             # Connect to the temporary database
             self.conn = sqlite3.connect(temp_db_path)
             cursor = self.conn.cursor()
@@ -462,27 +600,25 @@ class Database():
             self.drop_views_in_backup_db("bundled_db", cursor)
             
             # Dictionary mapping table names to functions to be executed if those tables are missing
-            loadList = {
-                "TUsers": self.create_user_table,
-            }
+            loadList = self.table_dict
             
             # Dictionary mapping views to functions to be executed if those tables are missing
-            viewList = {
-                "vUserInfo": self.some_view_creation_method,
-            }         
+            viewList = self.view_dict       
             
             for table, action in loadList.items():
+                flag = "table"
                 # Check if the table does not exist in the main (temporary) database
-                if not self.check_table_exists(cursor, table):
+                if not self.check_type_exists(cursor, table, flag):
                     # Now, check if the table exists in the backup database
-                    if not self.check_table_exists(cursor, table, "backup_db") or self.check_table_exists(cursor, table, "bundled_db"):
+                    if not self.check_type_exists(cursor, table, flag, "backup_db") or self.check_type_exists(cursor, table, flag, "bundled_db"):
                         # Execute the function linked to the table name in loadList
                         action(Database)  
             
             # Load views from viewList
             for view, action in viewList.items():
+                flag = "view"
                 # If the view does not exist in the main database or is outdated
-                if not self.check_view_exists(cursor, view, "main") or (not self.check_view_exists(cursor, view, "backup_db")) or (not self.check_view_exists(cursor, view, "bundled_db")):
+                if not self.check_type_exists(cursor, view, flag, "main") or (not self.check_type_exists(cursor, view, flag, "backup_db")) or (not self.check_type_exists(cursor, view, flag, "bundled_db")):
                     # Create or update the view using the action function in the main database
                     action(Database)             
                 
@@ -497,50 +633,32 @@ class Database():
             cursor.close()
             self.conn.close()
 
-    def check_table_exists(cursor, table_name, db_alias="main"):
+    def drop_db_object(self, cursor, object_name, object_type='table', db_alias="main"):
         """
-        Function Name: check_table_exists
-        Function Purpose: Check if a table exists in the currently connected database.
-        """        
+        Function Name: drop_db_object
+        Function Purpose: Drops an object from the database.
+
+        :param cursor: The database cursor.
+        :param object_name: The name of the table or view to drop.
+        :param object_type: The type of database object ('table' or 'view').
+        :param db_alias: The alias of the database, defaults to 'main'.
+        """
+        # Validate object_name against a pattern or known list
+        if not re.match("^[a-zA-Z0-9_]+$", object_name):
+            print(f"Invalid {object_type} name: {object_name}")
+            return
+        
+        # Set the object type plural for the print message
+        object_type_plural = 'tables' if object_type == 'table' else 'views'
+        
         try:
-            query = f"SELECT name FROM {db_alias}.sqlite_master WHERE type='table';"
-            cursor.execute(query)
-            tables = cursor.fetchall()
-            # Print the tables for debugging purposes
-            # print(f"Tables in {db_alias} database: {[table[0] for table in tables]}")
+            # SQL command to drop the table or view
+            cursor.execute(f"DROP {object_type.upper()} IF EXISTS {db_alias}.{object_name}")
+            print(f"{object_type.capitalize()} '{object_name}' dropped successfully from {object_type_plural}.")
+        except sqlite3.Error as e:
+            print(f"Error dropping {object_type} '{object_name}' in database {db_alias}: {e}")
             
-            # Check if the table name exists in the list of tables
-            if any(table[0] == table_name for table in tables):
-                return True
-            else:
-                return False
-
-        except sqlite3.Error as e:
-            print(f"Error checking table existence: {e}")
-            return False
-
-    def check_view_exists(cursor, view_name, db_alias="main"):
-        """
-        Function Name: check_view_exists
-        Function Purpose: Check if a view exists in the currently connected database.
-        """
-        try:
-            # Modify the query to check for views instead of tables
-            query = f"SELECT name FROM {db_alias}.sqlite_master WHERE type='view';"
-            cursor.execute(query)
-            views = cursor.fetchall()
-
-            # Check if the view name exists in the list of views
-            if any(view[0] == view_name for view in views):
-                return True
-            else:
-                return False
-
-        except sqlite3.Error as e:
-            print(f"Error checking view existence: {e}")
-            return False
-
-    def drop_view(self, cursor, view_name):
+    def drop_view(self, cursor, view_name, db_alias="main"):
         """
         Function Name: drop_view
         Function Purpose: Drops a view from the database.
@@ -548,12 +666,17 @@ class Database():
         :param cursor: The database cursor.
         :param view_name: The name of the view to drop.
         """
+        # Validate view_name against a pattern or known list
+        if not re.match("^[a-zA-Z0-9_]+$", view_name):
+            print(f"Invalid view name: {view_name}")
+            return
+        
         try:
             # SQL command to drop the view
-            cursor.execute(f"DROP VIEW IF EXISTS {view_name}")
+            cursor.execute(f"DROP VIEW IF EXISTS {db_alias}.{view_name}")
             print(f"View '{view_name}' dropped successfully.")
         except sqlite3.Error as e:
-            print(f"Error dropping view '{view_name}': {e}")
+            print(f"Error dropping view '{view_name}' in database {db_alias}: {e}")
             
     def drop_views_in_backup_db(self, db_alias, cursor):
         """
@@ -563,27 +686,15 @@ class Database():
         :param db_alias: Alias of the database where views will be dropped.
         :param cursor: Cursor object for executing SQL commands.
         """
-        # Create the view names
-        sql_view_name = [
-            'vSomeView',
-
-            ]        
-        try:
-            # Drop each view in the list
-            for view in sql_view_name:
-                cursor.execute(f"DROP VIEW IF EXISTS {db_alias}.{view};")
-
-        except sqlite3.Error as e:
-            print(f"Error dropping views in database {db_alias}: {e}")
-            
+        # Drop each view in the dict key list
+        for view in self.view_dict.keys():
+            self.drop_db_object(cursor, view, 'view', db_alias)
+        
     def db_create_script(self):
         """ 
         Function Name: db_create_script
         Function Purpose: Create the script for the sqlite database
         """        
-        # Get the current user 
-        self.get_current_user()
-        
         # Connect to the database
         self.db_connect()        
         
@@ -595,14 +706,13 @@ class Database():
         
         # Create the views
         self.db_load_views()
-        
+
     def db_load_tables(self):
         """ 
         Function Name: db_load_tables
         Function Purpose: Loads all the tables and audit tables for the database
         """                
-        # Load the Inspection Status tables
-        self.createInspectionStatusTable()
+        self.set_tables()
         
     def db_load_views(self):
         """ 
@@ -611,163 +721,212 @@ class Database():
         """              
         self.set_views()
 
+    def set_tables(self):
+        """ 
+        Function Name: set_tables
+        Function Purpose: Insert the table statements into the database
+        """ 
+        # Check if the database connection is available         
+        if not self.conn:
+            raise Exception("Database is not connected.")
+        
+        # Loop through the view dictionary and create the views
+        for table_name, set_method in self.table_dict.items():
+            set_method() 
+            
     def set_views(self, target_db="main"):
         """ 
         Function Name: set_views
         Function Purpose: Insert the view statements into the database
-        """          
-        # Create the view names
-        sql_view_name = [
-            'vInspectors', 
-            
-            ]
-                        
-        # Create the sqlStatement for the view
-        sqlStatement = [
-            # vInspectors
-            "SELECT strLastName || ',' || strFirstName AS InspectorName FROM TInspectors",
-
-            ]
-
-        # First check if connected to the database outside the loop (optional based on your use case)
+        """ 
+        # Check if the database connection is available         
         if not self.conn:
             raise Exception("Database is not connected.")
-
-        # Execute the SQL statements
-        for view_name, sql in zip(sql_view_name, sqlStatement):
-            full_view_name = f"{target_db + '.' if target_db != 'main' else ''}{view_name}"
-            try:
-                self.db_create_views(full_view_name, sql)
-            except sqlite3.Error as e:
-                print(f"Error creating view '{view_name}': {e}")
-            except Exception as e:
-                print(f"An unexpected error occurred: {e}")            
-
-    def create_new_views(self, viewName, sql):
-        """
-        Function Name: dbCreateViews
-        Function Description: This function is used to create new views inside the sqlite3 database
-        """
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-                        
-            # Declare Local Variables
-            sql_command = f"CREATE VIEW IF NOT EXISTS {viewName} AS {sql}"
-            
-            # Create the view
-            self.db_exe_statement(sql_command)
-
-            # Commit the changes and close the connection
-            self.conn.commit()
-
-        except sqlite3.Error as e:
-            print(f"Error creating SQLite view: {e}")
-
-    def db_create_views(self, full_view_name, sql):
+        
+        # Loop through the view dictionary and create the views
+        for sql_view_name, set_method in self.view_dict.items():
+            sql_view_name, sql_statement = set_method()
+            full_view_name = f"{target_db}.{sql_view_name}" if target_db != "main" else sql_view_name
+            self.db_create_views(full_view_name, sql_statement)          
+                
+    def db_create_views(self, view_name, sql):
         """
         Function Name: db_create_views
         Function Description: This function is used to create views inside the sqlite3 database
         """
         try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-
-            # Split the full_view_name to extract the target_db and viewName
-            parts = full_view_name.split('.')
-            if len(parts) == 2:
-                target_db, viewName = parts
-            else:
-                # If the view name does not include a period, assume it's in the main database
-                target_db = "main"
-                viewName = full_view_name
-
-            # Construct the SQL command
-            sql_command = f"CREATE VIEW IF NOT EXISTS {viewName} AS {sql}"
-            
-            # Determine which execution method to use
-            if target_db == "main":
-                # Execute the SQL command
-                self.db_exe_statement(sql_command)
-
-                # Commit the changes
-                self.conn.commit()
-            else:
-                # Direct execution for other databases
-                cursor = self.conn.cursor()
-                try:                
-                    # Execute the SQL command
-                    cursor.executescript(sql_command)
-
-                    # Commit the changes
-                    self.conn.commit()
-                    # print(f"SQL executed successfully for {target_db} database:", sql)
-                except sqlite3.Error as e:
-                    print(f"Error executing SQL statement: {e}")
-                finally:
-                    cursor.close()
-                    
+            sql_command = f"CREATE VIEW IF NOT EXISTS {view_name} AS {sql}"
+            self.db_exe_statement(sql_command)
         except sqlite3.Error as e:
-            print(f"Error creating SQLite view: {e}")   
-            
-#######################################################################################################
-# Database Queries
-#######################################################################################################         
-
-    def db_exe_statement(self, sql):
+            print(f"Error creating view '{view_name}': {e}")   
+                
+    def db_exe_statement(self, sql_command):
         """
         Function Name: db_exe_statement
         Function Purpose: Execute the given SQL statement
         """
-        # Check if the database connection is available
         if self.conn is None:
             print("Database is not connected.")
             return
-
+        
+        # First set the cursor to none
         cursor = None
+        # Execute the SQL command
         try:
             cursor = self.conn.cursor()
-            cursor.executescript(sql)
-            # print("SQL executed successfully:", sql)
+            # If the sql command contains semicolons, assume it's a script with multiple statements.
+            if ';' in sql_command:
+                cursor.executescript(sql_command)
+            else:
+                cursor.execute(sql_command)
+            # Commit the changes
+            self.conn.commit()
+            
+            # For debugging purposes
+            #print("SQL executed successfully.")
+            
         except sqlite3.Error as e:
-            print(f"Error executing SQL statement: {e}")
+            self.conn.rollback()  
+            print(f"Error executing SQL: {e}")
         finally:
-            # Ensure the cursor is closed in any situation
             if cursor:
                 cursor.close()
+            
+    def get_max_prim_keys(self, table, prim_key_col):
+        """
+        Function Name: get_max_prim_keys
+        Function Description: This function is used to get the max value
+        """
+        # Declare Local Variables
+        max_prim_key = None
+        
+        # Declare Primary sql statement and pass in the table and primary key column
+        sql_query = f"SELECT MAX({prim_key_col}) FROM {table}"
+        sql_max_query = f"SELECT MAX({prim_key_col}) + 1 FROM {table}"
+        sql_coal_query = f"SELECT COALESCE(MAX({prim_key_col}), 1) FROM {table}"
+                
+        try:
+            # Execute the SQL query
+            cursor = self.conn.cursor()
+            cursor.execute(sql_query)
+            
+            # Fetch the result
+            result = cursor.fetchone()
+            max_prim_key = result[0]
+            
+            # Check if the table is empty 
+            if max_prim_key is None:
+                cursor.execute(sql_coal_query)
+                
+                # Fetch the result
+                result = cursor.fetchone()
+                max_prim_key = result[0]
+                
+            else:
+                cursor.execute(sql_max_query)
+                                
+                # Fetch the result
+                result = cursor.fetchone()
+                max_prim_key = result[0]  
 
+            # Close the connection 
+            cursor.close()
+
+            # Return the result
+            return max_prim_key
+            
+        except sqlite3.Error as e:
+            print(f"Error executing SQL statement: {e}")  
+            
+    def insert_or_update_values(self, params):
+        """
+        Function Name: insert_or_update_values
+        Function Description: Checks if the specified table has any content. If not, inserts values; if there is content, updates the values.
+        """
+        # Declare Local Variables
+        table_name = params[0]
+        table_col_list = params[1]
+        table_values_list = params[2]
+        prim_id = params[3] if len(params) > 3 else None
+        key_id = params[4] if len(params) > 4 else None
+
+        # Check if the connection is available
+        if not self.conn:
+            try: 
+                self.db_connect()
+            except sqlite3.Error as e:
+                print(f"Error connecting to the database: {e}")
+                return
+
+        # Check for existing content in the table
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            count = cursor.fetchone()[0]
+
+            # If the table is empty, insert new values
+            if (count == 0):
+                # First check if the prim key is none
+                if not key_id:
+                    # Get the max primary key
+                    key_id = self.get_max_prim_keys(table_name, prim_id)
+                    
+                # Insert the prim_id into the first position of the values list
+                table_col_list.insert(0, prim_id)
+                table_values_list.insert(0, key_id)
+                insert_params = (table_name, table_col_list, table_values_list)
+                self.insert_values(insert_params)
+            else:
+                # If the table has content and primary key is provided, update values
+                if prim_id and key_id:
+                    self.update_values(params)
+                else:
+                    print(f"Table {table_name} is not empty, and no primary key was provided for an update.")
+                    
+        except sqlite3.Error as e:
+            print(f"Error checking content in {table_name}: {e}")
+            self.conn.rollback()
+        finally:
+            cursor.close()
+            
     def insert_values(self, params):
         """
         Function Name: insert_values
         Function Description: This function is used to insert values into non-Standard Tables.
         """
-        str_table = params[0]
-        table_col_list = params[1]
-        table_values_list = params[2]
-                
-        try:
-            # Declare Primary sql statement and pass in the table and primary key column
-            sqlQuery = f"INSERT INTO {str_table} {table_col_list} VALUES {table_values_list}"
-            
-            # Execute the SQL query
-            cursor = self.conn.cursor()
-            cursor.execute(sqlQuery)
+        # Set the parameters
+        table_name, table_col_list, table_values_list = params
+        
+        # Formatting column names for the SQL statement
+        cols = ', '.join(table_col_list)
+        
+        # Creating placeholders for the values
+        placeholders = ', '.join('?' * len(table_values_list))
 
-            # Close the connection 
-            cursor.close()
-                        
+        try:
+            # Constructing the SQL insert statement with placeholders
+            sql_insert_statement = f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})"
+            
+            # Execute the SQL query with parameterized values
+            cursor = self.conn.cursor()
+            cursor.execute(sql_insert_statement, table_values_list)
+            self.conn.commit()
+            
+            # For debugging purpose
+            #print(f"Values inserted successfully into {table_name}.")
+        
         except sqlite3.Error as e:
             print(f"Error executing SQL statement: {e}")   
             self.conn.rollback()
+        finally:
+            cursor.close()
 
     def update_values(self, params):
         """
         Function Name: update_values
         Function Description: This function is used to update values into non-Standard Tables.
         """
-        str_table = params[0]
+        table_name = params[0]
         table_col_list = params[1]
         table_values_list = params[2]
         prim_id = params[3]
@@ -776,7 +935,7 @@ class Database():
         try:
             # Create the SET part of the SQL query dynamically
             set_part = ', '.join(f"{col} = ?" for col in table_col_list)
-            sqlQuery = f"UPDATE {str_table} SET {set_part} WHERE {prim_id} = ?"
+            sql_update_statement = f"UPDATE {table_name} SET {set_part} WHERE {prim_id} = ?"
 
             # Prepare values for the parameterized query
             values_to_update = list(table_values_list) 
@@ -784,7 +943,7 @@ class Database():
 
             # Execute the SQL query
             cursor = self.conn.cursor()
-            cursor.execute(sqlQuery, values_to_update)
+            cursor.execute(sql_update_statement, values_to_update)
             cursor.close()
 
         except sqlite3.Error as e:
@@ -840,7 +999,7 @@ class Database():
         except sqlite3.Error as e:
             print(f"Error executing SQL statement: {e}")   
             self.conn.rollback()
-
+            
     def remove_attribute_query(self, strTable, intPrimID, intKeyID):
         """ 
         Function Name: remove_attribute_query
@@ -861,807 +1020,769 @@ class Database():
         except sqlite3.Error as e:
             print(f"Error executing SQL statement: {e}")
             self.conn.rollback()   
+    
+    #######################################################################################################
+    # Database Tables
+    #######################################################################################################         
 
+    def create_session_table(self):
+        """ 
+        Function Name: create_session_table
+        Function Purpose: Create the Session Table to capture the user session information
+        """          
+        # Create the table
+        sql_table = """
+            -- Create Session Table
+            CREATE TABLE IF NOT EXISTS TSessionContext 
+            (
+                intSessionID                       INTEGER NOT NULL
+                ,strCurrentUser                    VARCHAR(1000) NOT NULL
+                ,dtmLastUpdated                    DATETIME DEFAULT CURRENT_TIMESTAMP
 
+                ,CONSTRAINT TSessionContext_PK PRIMARY KEY (intSessionID)                 
+            );
+            """
             
-#######################################################################################################
-# Database Object Creation
-#######################################################################################################         
-
+        # Execute the SQL statements
+        self.db_exe_statement(sql_table)
+        self.update_session_context(self.current_user)
+    
     def create_user_table(self):
         """ 
         Function Name: create_user_table
         Function Purpose: Create the User Table and Z Tables inside the database
         """          
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-        
-            # Create the table
-            sqlTable = """
-                -- Create User Table
-                CREATE TABLE IF NOT EXISTS TUsers 
-                (
-                    intUserID                           INTEGER NOT NULL
-                    ,strUserName                        VARCHAR(1000) NOT NULL
-                    ,strUserPassword                    VARCHAR(1000) NOT NULL
-                    ,strUserEmail                       VARCHAR(1000) NOT NULL
-                    ,dtmRegistrationDate                DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strModifiedReason                  VARCHAR(1000)
+        # Create the table
+        sql_table = """
+            -- Create User Table
+            CREATE TABLE IF NOT EXISTS TUsers 
+            (
+                intUserID                           INTEGER NOT NULL
+                ,strUserName                        VARCHAR(1000) NOT NULL
+                ,strUserPassword                    VARCHAR(1000) NOT NULL
+                ,strUserEmail                       VARCHAR(1000) NOT NULL
+                ,dtmRegistrationDate                DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strModifiedReason                  VARCHAR(1000)
 
-                    ,CONSTRAINT TUsers_PK PRIMARY KEY (intUserID)                 
-                );
-                """
-            # Create the audit table    
-            sqlAudit = f"""                
-                -- Create Z Table: User Table
-                CREATE TABLE IF NOT EXISTS Z_TUsers 
-                (
-                    intUserAuditID                      INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,strUserName                        VARCHAR(1000) NOT NULL
-                    ,strUserPassword                    VARCHAR(1000) NOT NULL
-                    ,strUserEmail                       VARCHAR(1000) NOT NULL
-                    ,dtmRegistrationDate                DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strUpdatedBy                       VARCHAR(225) NOT NULL DEFAULT '{self.currentUser}'
-                    ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strAction                          VARCHAR(1) NOT NULL
-                    ,strModifiedReason                  VARCHAR(1000)
-                    
-                    ,CONSTRAINT Z_TUsers_PK PRIMARY KEY (intUserAuditID)
-                );
-                """
-            # Create the table trigger    
-            sqlTrigger = f"""
-                -- Create Trigger: User Table - Insert Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TUsers_AuditTrigger_Insert
-                AFTER INSERT ON TUsers
-                BEGIN
-                    INSERT INTO Z_TUsers 
-                    (
-                        intUserID
-                        ,strUserName
-                        ,strUserPassword
-                        ,strUserEmail
-                        ,dtmRegistrationDate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intUserID
-                        ,NEW.strUserName
-                        ,NEW.strUserPassword
-                        ,NEW.strUserEmail
-                        ,NEW.dtmRegistrationDate
-                        ,DATETIME('now')
-                        ,'{self.currentUser}'
-                        ,DATETIME('now')
-                        ,'I' -- Insert
-                        ,NEW.strModifiedReason
-                    );
-                END;
+                ,CONSTRAINT TUsers_PK PRIMARY KEY (intUserID)                 
+            );
+            """ 
+        # Execute the SQL statements
+        self.db_exe_statement(sql_table)
 
-                -- Create Trigger: User Table - Update Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TUsers_AuditTrigger_Update
-                AFTER UPDATE ON TUsers
-                BEGIN
-                    INSERT INTO Z_TUsers 
-                    (
-                        intUserID
-                        ,strUserName
-                        ,strUserPassword
-                        ,strUserEmail
-                        ,dtmRegistrationDate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intUserID
-                        ,NEW.strUserName
-                        ,NEW.strUserPassword
-                        ,NEW.strUserEmail
-                        ,DATETIME('now')
-                        ,'{self.currentUser}'
-                        ,DATETIME('now')
-                        ,'U' -- Update
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: User Table - Delete Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TUsers_AuditTrigger_Delete
-                AFTER DELETE ON TUsers
-                BEGIN
-                    INSERT INTO Z_TUsers 
-                    (
-                        intUserID
-                        ,strUserName
-                        ,strUserPassword
-                        ,strUserEmail
-                        ,dtmRegistrationDate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        OLD.intUserID
-                        ,OLD.strUserName
-                        ,OLD.strUserPassword
-                        ,OLD.strUserEmail
-                        ,DATETIME('now')
-                        ,'{self.currentUser}'
-                        ,DATETIME('now')
-                        ,'D' -- Delete
-                        ,OLD.strModifiedReason
-                    );
-                END;
-                """
+        # Create the audit table    
+        sqlAudit = f"""                
+            -- Create Z Table: User Table
+            CREATE TABLE IF NOT EXISTS Z_TUsers 
+            (
+                intUserAuditID                      INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,strUserName                        VARCHAR(1000) NOT NULL
+                ,strUserPassword                    VARCHAR(1000) NOT NULL
+                ,strUserEmail                       VARCHAR(1000) NOT NULL
+                ,dtmRegistrationDate                DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strUpdatedBy                       VARCHAR(225) NOT NULL 
+                ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strAction                          VARCHAR(1) NOT NULL
+                ,strModifiedReason                  VARCHAR(1000)
                 
-            # Execute the SQL statements
-            Database.db_exe_statement(self, sqlTable)
-            Database.db_exe_statement(self, sqlAudit)
-            Database.db_exe_statement(self, sqlTrigger)    
-            
-            # Commit the changes 
-            self.conn.commit()
+                ,CONSTRAINT Z_TUsers_PK PRIMARY KEY (intUserAuditID)
+            );
+            """
+        # Execute the SQL statements
+        self.db_exe_statement(sqlAudit)
+        
+        # Create the table trigger    
+        sqlTrigger = f"""
+            -- Create Trigger: User Table - Insert Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TUsers_AuditTrigger_Insert
+            AFTER INSERT ON TUsers
+            BEGIN
+                INSERT INTO Z_TUsers 
+                (
+                    intUserID
+                    ,strUserName
+                    ,strUserPassword
+                    ,strUserEmail
+                    ,dtmRegistrationDate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intUserID
+                    ,NEW.strUserName
+                    ,NEW.strUserPassword
+                    ,NEW.strUserEmail
+                    ,DATETIME('now')
+                    ,'{self.current_user}'
+                    ,DATETIME('now')
+                    ,'I' -- Insert
+                    ,NEW.strModifiedReason
+                );
+            END;
 
-        except sqlite3.Error as e:
-            print(f"Error creating User tables: {e}")   
+            -- Create Trigger: User Table - Update Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TUsers_AuditTrigger_Update
+            AFTER UPDATE ON TUsers
+            BEGIN
+                INSERT INTO Z_TUsers 
+                (
+                    intUserID
+                    ,strUserName
+                    ,strUserPassword
+                    ,strUserEmail
+                    ,dtmRegistrationDate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intUserID
+                    ,NEW.strUserName
+                    ,NEW.strUserPassword
+                    ,NEW.strUserEmail
+                    ,DATETIME('now')
+                    ,'{self.current_user}'
+                    ,DATETIME('now')
+                    ,'U' -- Update
+                    ,NEW.strModifiedReason
+                );
+            END;
+
+            -- Create Trigger: User Table - Delete Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TUsers_AuditTrigger_Delete
+            AFTER DELETE ON TUsers
+            BEGIN
+                INSERT INTO Z_TUsers 
+                (
+                    intUserID
+                    ,strUserName
+                    ,strUserPassword
+                    ,strUserEmail
+                    ,dtmRegistrationDate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    OLD.intUserID
+                    ,OLD.strUserName
+                    ,OLD.strUserPassword
+                    ,OLD.strUserEmail
+                    ,DATETIME('now')
+                    ,'{self.current_user}'
+                    ,DATETIME('now')
+                    ,'D' -- Delete
+                    ,OLD.strModifiedReason
+                );
+            END;
+            """
+            
+        # Execute the SQL statements
+        self.db_exe_statement(sqlTrigger)    
 
     def create_account_table(self):
         """ 
         Function Name: create_account_table
         Function Purpose: Create the Account Table and Z Tables inside the database
         """          
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-        
-            # Create the table
-            sqlTable = """
-                -- Create Account Table
-                CREATE TABLE IF NOT EXISTS TAccounts 
-                (
-                    intAccountID                        INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,strAppName                         VARCHAR(1000) NOT NULL
-                    ,strAppUserName                     VARCHAR(1000) 
-                    ,strAppPassword                     VARCHAR(1000) NOT NULL
-                    ,strAppEmail                        VARCHAR(1000) 
-                    ,strCategory                        VARCHAR(1000) NOT NULL
-                    ,strNotes                           VARCHAR(1000) 
-                    ,dtmLastUpdate                      DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strModifiedReason                  VARCHAR(1000)
-                    ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
-                    ,CONSTRAINT TAccounts_PK PRIMARY KEY ( intAccountID )                 
-                );
-                """
-            # Create the audit table    
-            sqlAudit = f"""                
-                -- Create Z Table: Account Table
-                CREATE TABLE IF NOT EXISTS Z_TAccounts 
-                (
-                    intAccountAuditID                   INTEGER NOT NULL
-                    ,intAccountID                       INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,strAppName                         VARCHAR(1000) NOT NULL
-                    ,strAppUserName                     VARCHAR(1000) 
-                    ,strAppPassword                     VARCHAR(1000) NOT NULL
-                    ,strAppEmail                        VARCHAR(1000) 
-                    ,strCategory                        VARCHAR(1000) NOT NULL
-                    ,strNotes                           VARCHAR(1000) 
-                    ,dtmLastUpdate                      DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strUpdatedBy                       VARCHAR(225) NOT NULL DEFAULT '{self.currentAccount}'
-                    ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strAction                          VARCHAR(1) NOT NULL
-                    ,strModifiedReason                  VARCHAR(1000)
-                    
-                    ,CONSTRAINT Z_TAccounts_PK PRIMARY KEY (intAccountAuditID)
-                );
-                """
-            # Create the table trigger    
-            sqlTrigger = f"""
-                -- Create Trigger: Account Table - Insert Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TAccounts_AuditTrigger_Insert
-                AFTER INSERT ON TAccounts
-                BEGIN
-                    INSERT INTO Z_TAccounts 
-                    (
-                        intAccountID
-                        ,intUserID
-                        ,strAppName
-                        ,strAccountName
-                        ,strAppPassword
-                        ,strAppEmail
-                        ,strCategory
-                        ,strNotes
-                        ,dtmLastUpdate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intAccountID
-                        ,NEW.intUserID
-                        ,NEW.strAppName
-                        ,NEW.strAppUserName
-                        ,NEW.strAccountName
-                        ,NEW.strAppPassword
-                        ,NEW.strAppEmail
-                        ,NEW.strCategory
-                        ,NEW.strNotes
-                        ,DATETIME('now')
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'I' -- Insert
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Account Table - Update Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TAccounts_AuditTrigger_Update
-                AFTER UPDATE ON TAccounts
-                BEGIN
-                    INSERT INTO Z_TAccounts 
-                    (
-                        intAccountID
-                        ,intUserID
-                        ,strAppName
-                        ,strAppUserName
-                        ,strAppPassword
-                        ,strAppEmail
-                        ,strCategory
-                        ,strNotes
-                        ,dtmLastUpdate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intAccountID
-                        ,NEW.intUserID
-                        ,NEW.strAppName
-                        ,NEW.strAppUserName
-                        ,NEW.strAccountName
-                        ,NEW.strAppPassword
-                        ,NEW.strAppEmail
-                        ,NEW.strCategory
-                        ,NEW.strNotes
-                        ,DATETIME('now')
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'U' -- Update
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Account Table - Delete Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TAccounts_AuditTrigger_Delete
-                AFTER DELETE ON TAccounts
-                BEGIN
-                    INSERT INTO Z_TAccounts 
-                    (
-                        intAccountID
-                        ,intUserID
-                        ,strAppName
-                        ,strAppUserName
-                        ,strAppPassword
-                        ,strAppEmail
-                        ,strCategory
-                        ,strNotes
-                        ,dtmLastUpdate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        OLD.intAccountID
-                        ,OLD.intUserID
-                        ,OLD.strAppName
-                        ,OLD.strAppUserName
-                        ,OLD.strAppPassword
-                        ,OLD.strAppEmail
-                        ,OLD.strCategory
-                        ,OLD.strNotes
-                        ,DATETIME('now')
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'D' -- Delete
-                        ,OLD.strModifiedReason
-                    );
-                END;
-                """
+        # Create the table
+        sql_table = """
+            -- Create Account Table
+            CREATE TABLE IF NOT EXISTS TAccounts 
+            (
+                intAccountID                        INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,strAppName                         VARCHAR(1000) NOT NULL
+                ,strAppUserName                     VARCHAR(1000) 
+                ,strAppPassword                     VARCHAR(1000) NOT NULL
+                ,strAppEmail                        VARCHAR(1000) 
+                ,strCategory                        VARCHAR(1000) NOT NULL
+                ,strNotes                           VARCHAR(1000) 
+                ,dtmLastUpdate                      DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strModifiedReason                  VARCHAR(1000)
                 
-            # Execute the SQL statements
-            Database.db_exe_statement(self, sqlTable)
-            Database.db_exe_statement(self, sqlAudit)
-            Database.db_exe_statement(self, sqlTrigger)    
-            
-            # Commit the changes 
-            self.conn.commit()
+                ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
+                ,CONSTRAINT TAccounts_PK PRIMARY KEY ( intAccountID )                 
+            );
+            """
+        # Create the audit table    
+        sqlAudit = f"""                
+            -- Create Z Table: Account Table
+            CREATE TABLE IF NOT EXISTS Z_TAccounts 
+            (
+                intAccountAuditID                   INTEGER NOT NULL
+                ,intAccountID                       INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,strAppName                         VARCHAR(1000) NOT NULL
+                ,strAppUserName                     VARCHAR(1000) 
+                ,strAppPassword                     VARCHAR(1000) NOT NULL
+                ,strAppEmail                        VARCHAR(1000) 
+                ,strCategory                        VARCHAR(1000) NOT NULL
+                ,strNotes                           VARCHAR(1000) 
+                ,dtmLastUpdate                      DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strUpdatedBy                       VARCHAR(225) NOT NULL
+                ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strAction                          VARCHAR(1) NOT NULL
+                ,strModifiedReason                  VARCHAR(1000)
+                
+                ,CONSTRAINT Z_TAccounts_PK PRIMARY KEY (intAccountAuditID)
+            );
+            """
+        # Create the table trigger    
+        sqlTrigger = f"""
+            -- Create Trigger: Account Table - Insert Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TAccounts_AuditTrigger_Insert
+            AFTER INSERT ON TAccounts
+            BEGIN
+                INSERT INTO Z_TAccounts 
+                (
+                    intAccountID
+                    ,intUserID
+                    ,strAppName
+                    ,strAccountName
+                    ,strAppPassword
+                    ,strAppEmail
+                    ,strCategory
+                    ,strNotes
+                    ,dtmLastUpdate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intAccountID
+                    ,NEW.intUserID
+                    ,NEW.strAppName
+                    ,NEW.strAppUserName
+                    ,NEW.strAccountName
+                    ,NEW.strAppPassword
+                    ,NEW.strAppEmail
+                    ,NEW.strCategory
+                    ,NEW.strNotes
+                    ,DATETIME('now')
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'I' -- Insert
+                    ,NEW.strModifiedReason
+                );
+            END;
 
-        except sqlite3.Error as e:
-            print(f"Error creating Account tables: {e}")
+            -- Create Trigger: Account Table - Update Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TAccounts_AuditTrigger_Update
+            AFTER UPDATE ON TAccounts
+            BEGIN
+                INSERT INTO Z_TAccounts 
+                (
+                    intAccountID
+                    ,intUserID
+                    ,strAppName
+                    ,strAppUserName
+                    ,strAppPassword
+                    ,strAppEmail
+                    ,strCategory
+                    ,strNotes
+                    ,dtmLastUpdate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intAccountID
+                    ,NEW.intUserID
+                    ,NEW.strAppName
+                    ,NEW.strAppUserName
+                    ,NEW.strAccountName
+                    ,NEW.strAppPassword
+                    ,NEW.strAppEmail
+                    ,NEW.strCategory
+                    ,NEW.strNotes
+                    ,DATETIME('now')
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'U' -- Update
+                    ,NEW.strModifiedReason
+                );
+            END;
+
+            -- Create Trigger: Account Table - Delete Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TAccounts_AuditTrigger_Delete
+            AFTER DELETE ON TAccounts
+            BEGIN
+                INSERT INTO Z_TAccounts 
+                (
+                    intAccountID
+                    ,intUserID
+                    ,strAppName
+                    ,strAppUserName
+                    ,strAppPassword
+                    ,strAppEmail
+                    ,strCategory
+                    ,strNotes
+                    ,dtmLastUpdate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    OLD.intAccountID
+                    ,OLD.intUserID
+                    ,OLD.strAppName
+                    ,OLD.strAppUserName
+                    ,OLD.strAppPassword
+                    ,OLD.strAppEmail
+                    ,OLD.strCategory
+                    ,OLD.strNotes
+                    ,DATETIME('now')
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'D' -- Delete
+                    ,OLD.strModifiedReason
+                );
+            END;
+            """
+            
+        # Execute the SQL statements
+        self.db_exe_statement(sql_table)
+        self.db_exe_statement(sqlAudit)
+        self.db_exe_statement(sqlTrigger)  
             
     def create_password_policy_table(self):
         """ 
         Function Name: create_password_policy_table
         Function Purpose: Create the password policy record Table and Z Tables inside the database
         """          
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-        
-            # Create the table
-            sqlTable = """ 
-                -- Create Password Policy Table
-                CREATE TABLE IF NOT EXISTS TPasswordPolicies 
-                (
-                    intPolicyID                         INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,intMinCharLength                   INTEGER NOT NULL
-                    ,strRequiredChar                    VARCHAR(1000) NOT NULL
-                    ,intExpirePeriod                    INTEGER NOT NULL
-                    ,strModifiedReason                  VARCHAR(1000)
-                    ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
-                    ,CONSTRAINT TPasswordPolicies_PK PRIMARY KEY ( intPolicyID )               
-                );
-                """
-            # Create the audit table    
-            sqlAudit = f"""                
-                -- Create Z Table: Password Policy Table
-                CREATE TABLE IF NOT EXISTS Z_TPasswordPolicies 
-                (
-                    intPolicyAuditID                    INTEGER NOT NULL
-                    ,intPolicyID                        INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,intMinCharLength                   INTEGER NOT NULL
-                    ,strRequiredChar                    VARCHAR(1000) NOT NULL
-                    ,intExpirePeriod                    INTEGER NOT NULL
-                    ,strUpdatedBy                       VARCHAR(225) NOT NULL DEFAULT '{self.currentAccount}'
-                    ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strAction                          VARCHAR(1) NOT NULL
-                    ,strModifiedReason                  VARCHAR(1000)
-                    
-                    ,CONSTRAINT Z_TPasswordPolicies_PK PRIMARY KEY (intPolicyAuditID)
-                );
-                """
-            # Create the table trigger    
-            sqlTrigger = f"""
-                -- Create Trigger: Password Policy Table - Insert Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Insert
-                AFTER INSERT ON TPasswordPolicies
-                BEGIN
-                    INSERT INTO Z_TPasswordPolicies 
-                    (
-                        intPolicyID
-                        ,intUserID
-                        ,intMinCharLength
-                        ,strRequiredChar
-                        ,intExpirePeriod
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intPolicyID
-                        ,NEW.intUserID
-                        ,NEW.intMinCharLength
-                        ,NEW.strRequiredChar
-                        ,NEW.intExpirePeriod
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'I' -- Insert
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Password Policy Table - Update Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Update
-                AFTER UPDATE ON TPasswordPolicies
-                BEGIN
-                    INSERT INTO Z_TPasswordPolicies 
-                    (
-                        intPolicyID
-                        ,intUserID
-                        ,intMinCharLength
-                        ,strRequiredChar
-                        ,intExpirePeriod
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intPolicyID
-                        ,NEW.intUserID
-                        ,NEW.intMinCharLength
-                        ,NEW.strRequiredChar
-                        ,NEW.intExpirePeriod
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'U' -- Update
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Password Policy Table - Delete Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Delete
-                AFTER DELETE ON TPasswordPolicies
-                BEGIN
-                    INSERT INTO Z_TPasswordPolicies 
-                    (
-                        intPolicyID
-                        ,intUserID
-                        ,intMinCharLength
-                        ,strRequiredChar
-                        ,intExpirePeriod
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        OLD.intPolicyID
-                        ,OLD.intUserID
-                        ,OLD.intMinCharLength
-                        ,OLD.strRequiredChar
-                        ,OLD.intExpirePeriod
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'D' -- Delete
-                        ,OLD.strModifiedReason
-                    );
-                END;
-                """
+        # Create the table
+        sql_table = """ 
+            -- Create Password Policy Table
+            CREATE TABLE IF NOT EXISTS TPasswordPolicies 
+            (
+                intPolicyID                         INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,intMinCharLength                   INTEGER NOT NULL
+                ,strRequiredChar                    VARCHAR(1000) NOT NULL
+                ,intExpirePeriod                    INTEGER NOT NULL
+                ,strModifiedReason                  VARCHAR(1000)
                 
-            # Execute the SQL statements
-            Database.db_exe_statement(self, sqlTable)
-            Database.db_exe_statement(self, sqlAudit)
-            Database.db_exe_statement(self, sqlTrigger)    
-            
-            # Commit the changes 
-            self.conn.commit()
+                ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
+                ,CONSTRAINT TPasswordPolicies_PK PRIMARY KEY ( intPolicyID )               
+            );
+            """
+        # Create the audit table    
+        sqlAudit = f"""                
+            -- Create Z Table: Password Policy Table
+            CREATE TABLE IF NOT EXISTS Z_TPasswordPolicies 
+            (
+                intPolicyAuditID                    INTEGER NOT NULL
+                ,intPolicyID                        INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,intMinCharLength                   INTEGER NOT NULL
+                ,strRequiredChar                    VARCHAR(1000) NOT NULL
+                ,intExpirePeriod                    INTEGER NOT NULL
+                ,strUpdatedBy                       VARCHAR(225) NOT NULL 
+                ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strAction                          VARCHAR(1) NOT NULL
+                ,strModifiedReason                  VARCHAR(1000)
+                
+                ,CONSTRAINT Z_TPasswordPolicies_PK PRIMARY KEY (intPolicyAuditID)
+            );
+            """
+        # Create the table trigger    
+        sqlTrigger = f"""
+            -- Create Trigger: Password Policy Table - Insert Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Insert
+            AFTER INSERT ON TPasswordPolicies
+            BEGIN
+                INSERT INTO Z_TPasswordPolicies 
+                (
+                    intPolicyID
+                    ,intUserID
+                    ,intMinCharLength
+                    ,strRequiredChar
+                    ,intExpirePeriod
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intPolicyID
+                    ,NEW.intUserID
+                    ,NEW.intMinCharLength
+                    ,NEW.strRequiredChar
+                    ,NEW.intExpirePeriod
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'I' -- Insert
+                    ,NEW.strModifiedReason
+                );
+            END;
 
-        except sqlite3.Error as e:
-            print(f"Error creating Password Policy tables: {e}")
+            -- Create Trigger: Password Policy Table - Update Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Update
+            AFTER UPDATE ON TPasswordPolicies
+            BEGIN
+                INSERT INTO Z_TPasswordPolicies 
+                (
+                    intPolicyID
+                    ,intUserID
+                    ,intMinCharLength
+                    ,strRequiredChar
+                    ,intExpirePeriod
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intPolicyID
+                    ,NEW.intUserID
+                    ,NEW.intMinCharLength
+                    ,NEW.strRequiredChar
+                    ,NEW.intExpirePeriod
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'U' -- Update
+                    ,NEW.strModifiedReason
+                );
+            END;
+
+            -- Create Trigger: Password Policy Table - Delete Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TPasswordPolicies_AuditTrigger_Delete
+            AFTER DELETE ON TPasswordPolicies
+            BEGIN
+                INSERT INTO Z_TPasswordPolicies 
+                (
+                    intPolicyID
+                    ,intUserID
+                    ,intMinCharLength
+                    ,strRequiredChar
+                    ,intExpirePeriod
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    OLD.intPolicyID
+                    ,OLD.intUserID
+                    ,OLD.intMinCharLength
+                    ,OLD.strRequiredChar
+                    ,OLD.intExpirePeriod
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'D' -- Delete
+                    ,OLD.strModifiedReason
+                );
+            END;
+            """
+            
+        # Execute the SQL statements
+        self.db_exe_statement(sql_table)
+        self.db_exe_statement(sqlAudit)
+        self.db_exe_statement(sqlTrigger) 
             
     def create_password_history_table(self):
         """ 
         Function Name: create_password_history_table
         Function Purpose: Create the password history Table and Z Tables inside the database
         """          
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-        
-            # Create the table
-            sqlTable = """
-                -- Create Account Password History Table
-                CREATE TABLE IF NOT EXISTS TPasswordHistory 
-                (
-                    intPasswordHistoryID                INTEGER NOT NULL
-                    ,intAccountID                       INTEGER NOT NULL
-                    ,strOldPassword                     VARCHAR(1000) NOT NULL 
-                    ,dtmDateChanged                     DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strModifiedReason                  VARCHAR(1000)
-                    ,FOREIGN KEY ( intAccountID ) REFERENCES TAccounts ( intAccountID )
-                    ,CONSTRAINT TPasswordHistory_PK PRIMARY KEY ( intPasswordHistoryID )               
-                );
-                """
-            # Create the audit table    
-            sqlAudit = f"""                
-                -- Create Z Table: Account Password History Table
-                CREATE TABLE IF NOT EXISTS Z_TPasswordHistory 
-                (
-                    intPasswordHistoryAuditID           INTEGER NOT NULL
-                    ,intPasswordHistoryID               INTEGER NOT NULL
-                    ,intAccountID                       INTEGER NOT NULL
-                    ,strOldPassword                     VARCHAR(1000) NOT NULL
-                    ,dtmDateChanged                     DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strUpdatedBy                       VARCHAR(225) NOT NULL DEFAULT '{self.currentAccount}'
-                    ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strAction                          VARCHAR(1) NOT NULL
-                    ,strModifiedReason                  VARCHAR(1000)
-                    
-                    ,CONSTRAINT Z_TPasswordHistory_PK PRIMARY KEY (intPasswordHistoryAuditID)
-                );
-                """
-            # Create the table trigger    
-            sqlTrigger = f"""
-                -- Create Trigger: Account Password History Table - Insert Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TPasswordHistory_AuditTrigger_Insert
-                AFTER INSERT ON TPasswordHistory
-                BEGIN
-                    INSERT INTO Z_TPasswordHistory 
-                    (
-                        intPasswordHistoryID
-                        ,intAccountID
-                        ,strOldPassword
-                        ,dtmDateChanged
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intPasswordHistoryID
-                        ,NEW.intAccountID
-                        ,NEW.strOldPassword
-                        ,DATETIME('now')
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'I' -- Insert
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Account Password History Table - Update Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TPasswordHistory_AuditTrigger_Update
-                AFTER UPDATE ON TPasswordHistory
-                BEGIN
-                    INSERT INTO Z_TPasswordHistory 
-                    (
-                        intPasswordHistoryID
-                        ,intAccountID
-                        ,strOldPassword
-                        ,dtmDateChanged
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intPasswordHistoryID
-                        ,NEW.intAccountID
-                        ,NEW.strOldPassword
-                        ,DATETIME('now')
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'U' -- Update
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Account Password History Table - Delete Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TPasswordHistory_AuditTrigger_Delete
-                AFTER DELETE ON TPasswordHistory
-                BEGIN
-                    INSERT INTO Z_TPasswordHistory 
-                    (
-                        intPasswordHistoryID
-                        ,intAccountID
-                        ,strOldPassword
-                        ,dtmDateChanged
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        OLD.intPasswordHistoryID
-                        ,OLD.intAccountID
-                        ,OLD.strOldPassword
-                        ,DATETIME('now')
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'D' -- Delete
-                        ,OLD.strModifiedReason
-                    );
-                END;
-                """
+        # Create the table
+        sql_table = """
+            -- Create Account Password History Table
+            CREATE TABLE IF NOT EXISTS TPasswordHistory 
+            (
+                intPasswordHistoryID                INTEGER NOT NULL
+                ,intAccountID                       INTEGER NOT NULL
+                ,strOldPassword                     VARCHAR(1000) NOT NULL 
+                ,dtmDateChanged                     DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strModifiedReason                  VARCHAR(1000)
+                ,FOREIGN KEY ( intAccountID ) REFERENCES TAccounts ( intAccountID )
+                ,CONSTRAINT TPasswordHistory_PK PRIMARY KEY ( intPasswordHistoryID )               
+            );
+            """
+        # Create the audit table    
+        sqlAudit = f"""                
+            -- Create Z Table: Account Password History Table
+            CREATE TABLE IF NOT EXISTS Z_TPasswordHistory 
+            (
+                intPasswordHistoryAuditID           INTEGER NOT NULL
+                ,intPasswordHistoryID               INTEGER NOT NULL
+                ,intAccountID                       INTEGER NOT NULL
+                ,strOldPassword                     VARCHAR(1000) NOT NULL
+                ,dtmDateChanged                     DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strUpdatedBy                       VARCHAR(225) NOT NULL 
+                ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strAction                          VARCHAR(1) NOT NULL
+                ,strModifiedReason                  VARCHAR(1000)
                 
-            # Execute the SQL statements
-            Database.db_exe_statement(self, sqlTable)
-            Database.db_exe_statement(self, sqlAudit)
-            Database.db_exe_statement(self, sqlTrigger)    
+                ,CONSTRAINT Z_TPasswordHistory_PK PRIMARY KEY (intPasswordHistoryAuditID)
+            );
+            """
+        # Create the table trigger    
+        sqlTrigger = f"""
+            -- Create Trigger: Account Password History Table - Insert Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TPasswordHistory_AuditTrigger_Insert
+            AFTER INSERT ON TPasswordHistory
+            BEGIN
+                INSERT INTO Z_TPasswordHistory 
+                (
+                    intPasswordHistoryID
+                    ,intAccountID
+                    ,strOldPassword
+                    ,dtmDateChanged
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intPasswordHistoryID
+                    ,NEW.intAccountID
+                    ,NEW.strOldPassword
+                    ,DATETIME('now')
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'I' -- Insert
+                    ,NEW.strModifiedReason
+                );
+            END;
+
+            -- Create Trigger: Account Password History Table - Update Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TPasswordHistory_AuditTrigger_Update
+            AFTER UPDATE ON TPasswordHistory
+            BEGIN
+                INSERT INTO Z_TPasswordHistory 
+                (
+                    intPasswordHistoryID
+                    ,intAccountID
+                    ,strOldPassword
+                    ,dtmDateChanged
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intPasswordHistoryID
+                    ,NEW.intAccountID
+                    ,NEW.strOldPassword
+                    ,DATETIME('now')
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'U' -- Update
+                    ,NEW.strModifiedReason
+                );
+            END;
+
+            -- Create Trigger: Account Password History Table - Delete Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TPasswordHistory_AuditTrigger_Delete
+            AFTER DELETE ON TPasswordHistory
+            BEGIN
+                INSERT INTO Z_TPasswordHistory 
+                (
+                    intPasswordHistoryID
+                    ,intAccountID
+                    ,strOldPassword
+                    ,dtmDateChanged
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    OLD.intPasswordHistoryID
+                    ,OLD.intAccountID
+                    ,OLD.strOldPassword
+                    ,DATETIME('now')
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'D' -- Delete
+                    ,OLD.strModifiedReason
+                );
+            END;
+            """
             
-            # Commit the changes 
-            self.conn.commit()
-
-        except sqlite3.Error as e:
-            print(f"Error creating Account Password History tables: {e}")
-
+        # Execute the SQL statements
+        self.db_exe_statement(sql_table)
+        self.db_exe_statement(sqlAudit)
+        self.db_exe_statement(sqlTrigger) 
+        
     def create_backup_db_records_table(self):
         """ 
         Function Name: create_backup_db_records_table
         Function Purpose: Create the backup database record Table and Z Tables inside the database
         """          
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-        
-            # Create the table
-            sqlTable = """
-                -- Create Backup DB Record Table
-                CREATE TABLE IF NOT EXISTS TBackupDBs 
-                (
-                    intBackupID                         INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,dtmBackupDate                      DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strFilePath                        VARCHAR(1000) NOT NULL 
-                    ,strModifiedReason                  VARCHAR(1000)
-                    ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
-                    ,CONSTRAINT TBackupDBs_PK PRIMARY KEY ( intBackupID )               
-                );
-                """
-            # Create the audit table    
-            sqlAudit = f"""                
-                -- Create Z Table: Backup DB Record Table
-                CREATE TABLE IF NOT EXISTS Z_TBackupDBs 
-                (
-                    intBackupDBAuditID                  INTEGER NOT NULL
-                    ,intBackupID                        INTEGER NOT NULL
-                    ,intUserID                          INTEGER NOT NULL
-                    ,dtmBackupDate                      DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strFilePath                        VARCHAR(1000) NOT NULL
-                    ,strUpdatedBy                       VARCHAR(225) NOT NULL DEFAULT '{self.currentAccount}'
-                    ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ,strAction                          VARCHAR(1) NOT NULL
-                    ,strModifiedReason                  VARCHAR(1000)
-                    
-                    ,CONSTRAINT Z_TBackupDBs_PK PRIMARY KEY (intBackupDBAuditID)
-                );
-                """
-            # Create the table trigger    
-            sqlTrigger = f"""
-                -- Create Trigger: Backup DB Record Table - Insert Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TBackupDBs_AuditTrigger_Insert
-                AFTER INSERT ON TBackupDBs
-                BEGIN
-                    INSERT INTO Z_TBackupDBs 
-                    (
-                        intBackupID
-                        ,intUserID
-                        ,dtmBackupDate
-                        ,strFilePath
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intBackupID
-                        ,NEW.intUserID
-                        ,NEW.dtmBackupDate
-                        ,NEW.strFilePath
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'I' -- Insert
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Backup DB Record Table - Update Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TBackupDBs_AuditTrigger_Update
-                AFTER UPDATE ON TBackupDBs
-                BEGIN
-                    INSERT INTO Z_TBackupDBs 
-                    (
-                        intBackupID
-                        ,intUserID
-                        ,dtmBackupDate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        NEW.intBackupID
-                        ,NEW.intUserID
-                        ,NEW.dtmBackupDate
-                        ,NEW.strFilePath
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'U' -- Update
-                        ,NEW.strModifiedReason
-                    );
-                END;
-
-                -- Create Trigger: Backup DB Record Table - Delete Trigger
-                CREATE TRIGGER IF NOT EXISTS Z_TBackupDBs_AuditTrigger_Delete
-                AFTER DELETE ON TBackupDBs
-                BEGIN
-                    INSERT INTO Z_TBackupDBs 
-                    (
-                        intBackupID
-                        ,intUserID
-                        ,dtmBackupDate
-                        ,strUpdatedBy
-                        ,dtmUpdatedOn
-                        ,strAction
-                        ,strModifiedReason
-                    )
-                    VALUES 
-                    (
-                        OLD.intBackupID
-                        ,OLD.intUserID
-                        ,OLD.dtmBackupDate
-                        ,NEW.strFilePath
-                        ,'{self.currentAccount}'
-                        ,DATETIME('now')
-                        ,'D' -- Delete
-                        ,OLD.strModifiedReason
-                    );
-                END;
-                """
+        # Create the table
+        sql_table = """
+            -- Create Backup DB Record Table
+            CREATE TABLE IF NOT EXISTS TBackupDBs 
+            (
+                intBackupID                         INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,dtmBackupDate                      DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strFilePath                        VARCHAR(1000) NOT NULL 
+                ,strModifiedReason                  VARCHAR(1000)
+                ,FOREIGN KEY ( intUserID ) REFERENCES TUsers ( intUserID )
+                ,CONSTRAINT TBackupDBs_PK PRIMARY KEY ( intBackupID )               
+            );
+            """
+        # Create the audit table    
+        sqlAudit = f"""                
+            -- Create Z Table: Backup DB Record Table
+            CREATE TABLE IF NOT EXISTS Z_TBackupDBs 
+            (
+                intBackupDBAuditID                  INTEGER NOT NULL
+                ,intBackupID                        INTEGER NOT NULL
+                ,intUserID                          INTEGER NOT NULL
+                ,dtmBackupDate                      DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strFilePath                        VARCHAR(1000) NOT NULL
+                ,strUpdatedBy                       VARCHAR(225) NOT NULL 
+                ,dtmUpdatedOn                       DATETIME DEFAULT CURRENT_TIMESTAMP
+                ,strAction                          VARCHAR(1) NOT NULL
+                ,strModifiedReason                  VARCHAR(1000)
                 
-            # Execute the SQL statements
-            Database.db_exe_statement(self, sqlTable)
-            Database.db_exe_statement(self, sqlAudit)
-            Database.db_exe_statement(self, sqlTrigger)    
-            
-            # Commit the changes 
-            self.conn.commit()
+                ,CONSTRAINT Z_TBackupDBs_PK PRIMARY KEY (intBackupDBAuditID)
+            );
+            """
+        # Create the table trigger    
+        sqlTrigger = f"""
+            -- Create Trigger: Backup DB Record Table - Insert Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TBackupDBs_AuditTrigger_Insert
+            AFTER INSERT ON TBackupDBs
+            BEGIN
+                INSERT INTO Z_TBackupDBs 
+                (
+                    intBackupID
+                    ,intUserID
+                    ,dtmBackupDate
+                    ,strFilePath
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intBackupID
+                    ,NEW.intUserID
+                    ,NEW.dtmBackupDate
+                    ,NEW.strFilePath
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'I' -- Insert
+                    ,NEW.strModifiedReason
+                );
+            END;
 
-        except sqlite3.Error as e:
-            print(f"Error creating Backup DB Record tables: {e}")
-            
-#######################################################################################################
-# Database Object View Creation
-#######################################################################################################         
+            -- Create Trigger: Backup DB Record Table - Update Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TBackupDBs_AuditTrigger_Update
+            AFTER UPDATE ON TBackupDBs
+            BEGIN
+                INSERT INTO Z_TBackupDBs 
+                (
+                    intBackupID
+                    ,intUserID
+                    ,dtmBackupDate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    NEW.intBackupID
+                    ,NEW.intUserID
+                    ,NEW.dtmBackupDate
+                    ,NEW.strFilePath
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'U' -- Update
+                    ,NEW.strModifiedReason
+                );
+            END;
 
-    def db_set_accounts_view(self):
+            -- Create Trigger: Backup DB Record Table - Delete Trigger
+            CREATE TRIGGER IF NOT EXISTS Z_TBackupDBs_AuditTrigger_Delete
+            AFTER DELETE ON TBackupDBs
+            BEGIN
+                INSERT INTO Z_TBackupDBs 
+                (
+                    intBackupID
+                    ,intUserID
+                    ,dtmBackupDate
+                    ,strUpdatedBy
+                    ,dtmUpdatedOn
+                    ,strAction
+                    ,strModifiedReason
+                )
+                VALUES 
+                (
+                    OLD.intBackupID
+                    ,OLD.intUserID
+                    ,OLD.dtmBackupDate
+                    ,NEW.strFilePath
+                    ,(SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1)
+                    ,DATETIME('now')
+                    ,'D' -- Delete
+                    ,OLD.strModifiedReason
+                );
+            END;
+            """
+            
+        # Execute the SQL statements
+        self.db_exe_statement(sql_table)
+        self.db_exe_statement(sqlAudit)
+        self.db_exe_statement(sqlTrigger) 
+            
+    #######################################################################################################
+    # Database View Creation
+    #######################################################################################################         
+
+    def set_accounts_view(self):
         """ 
-        Function Name: db_set_accounts_view
+        Function Name: set_accounts_view
         Function Purpose: Sets the base Accounts view for the database if the view does not exists in the db
         """     
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-
-            # Create the view names
-            sql_view_name = 'vAccountsInfo'
-            
-            # Create the sqlStatement for the view
-            sqlStatement = """SELECT
-                                TA.strAppName                                       AS Application_Name
-                                ,TA.strAppUserName                                  AS User_Name
-                                ,TA.strAppEmail                                     AS Email
-                                ,TA.strAppPassword                                  AS Account_Password
-                                ,TA.dtmLastUpdate                                   AS Last_Update
-                                ,TA.strCategory                                     AS Category
-                            FROM 
-                                TAccounts AS TA;"""                    
+        # Create the view names
+        sql_view_name = 'vAccountsInfo'
         
-                        
-            # Execute the SQL statements
-            self.create_new_views(sql_view_name, sqlStatement)       
-            
-            # Commit the changes 
-            self.conn.commit()
-        except sqlite3.Error as e:
-            print(f"Error Inserting Data: {e}")   
-            
+        # Create the sql_statement for the view
+        sql_statement = """
+                        SELECT
+                            TA.strAppName                                       AS 'Application Name'
+                            ,TA.strAppUserName                                  AS 'User Name'
+                            ,TA.strAppEmail                                     AS 'Email'
+                            ,TA.strAppPassword                                  AS 'Account Password'
+                            ,TA.dtmLastUpdate                                   AS 'Last Update'
+                            ,TA.strCategory                                     AS 'Category'
+                        FROM 
+                            TAccounts AS TA;
+                        """                    
+        # To debug the view
+        # print(f"View '{sql_view_name}' created or already exists.")
+        
+        return (sql_view_name, sql_statement)
+
     def db_set_all_accounts_by_category_view(self):
         """ 
         Function Name: db_set_all_accounts_by_category_view
@@ -1678,32 +1799,51 @@ class Database():
             'Personal', 
             ]
         
-        try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
+        for category in categories:
+            # Create the view names
+            sql_view_name = f'vAccountsInfo_{category}'
 
-            for category in categories:
-                # Create the view names
-                sql_view_name = f'vAccountsInfo_{category}'
+            # Create the sql_statement for the view, filtering by the provided category
+            sql_statement = f"""
+                            SELECT
+                                TA.strAppName                                       AS 'Application Name'
+                                ,TA.strAppUserName                                  AS 'User Name'
+                                ,TA.strAppEmail                                     AS 'Email'
+                                ,TA.strAppPassword                                  AS 'Account Password'
+                                ,TA.dtmLastUpdate                                   AS 'Last Update'
+                                ,TA.strCategory                                     AS 'Category'
+                            FROM 
+                                TAccounts AS TA
+                            WHERE 
+                                TA.strCategory = '{category}';
+                            """                    
 
-                # Create the sqlStatement for the view, filtering by the provided category
-                sqlStatement = f"""SELECT
-                                    TA.strAppName                                       AS Application_Name
-                                    ,TA.strAppUserName                                  AS User_Name
-                                    ,TA.strAppEmail                                     AS Email
-                                    ,TA.strAppPassword                                  AS Account_Password
-                                    ,TA.dtmLastUpdate                                   AS Last_Update
-                                    ,TA.strNotes                                        AS Notes
-                                FROM 
-                                    TAccounts AS TA
-                                WHERE 
-                                    TA.strCategory = '{category}';"""                    
+        # To debug the view
+        # print(f"View '{sql_view_name}' created or already exists.")
+        
+        return (sql_view_name, sql_statement)   
+            
+    #######################################################################################################
+    # Database Update Creation
+    #######################################################################################################         
 
-                # Execute the SQL statements
-                self.create_new_views(sql_view_name, sqlStatement)       
+    def update_session_context(self, currentUser):
+        """
+        Function Name: update_session_context
+        Function Description: This function is used to update the session context with the current user
+        """
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the update_values method
+        table_name = 'TSessionContext'
+        table_col_list = ['strCurrentUser', 'dtmLastUpdated']
+        table_values_list = [currentUser, todays_date]
+        prim_id = 'intSessionID'
+        key_id = 1
 
-            # Commit the changes Query
-            self.conn.commit()
-        except sqlite3.Error as e:
-            print(f"Error Inserting Data: {e}")   
+        # Package parameters
+        params = (table_name, table_col_list, table_values_list, prim_id, key_id)
+
+        # Call update_values with the prepared parameters
+        self.insert_or_update_values(params)

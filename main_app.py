@@ -25,6 +25,7 @@ from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
 from user_login_ui import UserLogin_UiComposable, AddNewUser_UiComposable
+from database_script import Database
 
 
 #######################################################################################################
@@ -108,7 +109,17 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         else:
             print(f"No frame with name {frame_name} found.")
             
-
+def init_primary_boot_methods():
+    """ 
+    Function Name: init_primary_boot_methods
+    Function Description: This function holds all the main methods for the program
+    """
+    # Call the database attribute method
+    Database.db_set_database_attr(Database)
+    
+    # Start the main GUI window  
+    root = Main_UiComposable()  
+    
 #######################################################################################################
 # Main Start of Program
 #######################################################################################################         
@@ -120,9 +131,8 @@ def Main():
     """
     try:
         # Start the main GUI window  
-        root = Main_UiComposable()  
+        init_primary_boot_methods()
 
-        
     # Display error message if the entry is invalid
     except Exception as err:
         print("Exception occurred because", err)
