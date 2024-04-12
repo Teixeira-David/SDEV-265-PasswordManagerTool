@@ -25,7 +25,7 @@ from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
 from user_login_ui import UserLogin_UiComposable, AddNewUser_UiComposable
-from database_script import Database
+from database_script import Database, Database_File_Handler
 
 
 #######################################################################################################
@@ -62,8 +62,10 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         self.init_frames()
         
         # Keep the root window open while the user is interacting with the widgets
-        self.mainloop()           
-        sys.exit() # Exit the program if the user closes the window     
+        self.mainloop()    
+        
+        # Exit the program if the user closes the window
+        sys.exit()      
 
     def create_main_container(self):
         """
@@ -136,7 +138,9 @@ def Main():
     # Display error message if the entry is invalid
     except Exception as err:
         print("Exception occurred because", err)
-
+    finally:
+        # Backup the database if the user closes the window
+        Database_File_Handler.backup_volume(Database_File_Handler)
 # This is the start of main program
 if __name__ == '__main__':
     Main()

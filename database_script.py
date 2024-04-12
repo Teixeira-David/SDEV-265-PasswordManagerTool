@@ -8,7 +8,7 @@ for the most up-to-date version.
     Repository: https://github.com/Teixeira-David/SDEV-265-PasswordManagerTool.git
     
     
-    File Abstract: This file is the main entry point for the SDEV-265 Password Manager Tool.
+    File Abstract: This file is the main =entry point for the SDEV-265 Password Manager Tool.
 """
 
 # Import Python Libraries
@@ -126,7 +126,6 @@ class Database():
         Function Name: db_set_database_attr
         Function Abstract: Set the database attributes from the configuration file.
         """      
-
         # Init the database file handler
         db_fh = Database_File_Handler()
         
@@ -392,7 +391,8 @@ class Database_File_Handler(Database):
             return True
         
         except Exception as e:
-            print(f"Error replacing the database: {e}")
+            print(f"Error: {e}")
+            print(f"Failed operation path details: Backup path: {backup_path}, Temp DB path: {temp_db_path}, Temp Backup DB path: {temp_backup_db_path}")
             return False
         finally:
             # Clean up any temporary files
@@ -416,11 +416,11 @@ class Database_File_Handler(Database):
             return None
 
         # First, check the contents of back up dir for .zip files
-        zip_files = glob.glob(f"{backup_dir}/cipher_shield_database.db_????????_??????.zip")
+        zip_files = glob.glob(f"{backup_dir}/cipher_shield.db_????????_??????.zip")
 
         # If no .zip files were found in back up dir, check its subdirectories
         if not zip_files:
-            zip_files = glob.glob(f"{backup_dir}/**/cipher_shield_database.db_????????_??????.zip", recursive=True)
+            zip_files = glob.glob(f"{backup_dir}/**/cipher_shield.db_????????_??????.zip", recursive=True)
 
         # If still no .zip files are found, return None
         if not zip_files:
@@ -441,7 +441,74 @@ class Database_File_Handler(Database):
         db = Database(db_name=unzipped_db_filename, db_path=unzipped_db_path, db_password=decryption_password)
 
         return db.db_name, db.db_path
-    
+
+    def merge_databases(self, bundled_db_path, temp_db_path, backup_db_path):
+        """
+        Function Name: merge_databases
+        Function Purpose: Merge new tables to the rolling database.
+        """
+        try:
+            # Create the database management handler instance
+            db_mg = Database_Management_Handler()
+            
+            # Connect to the temporary database
+            db_mg.conn = sqlite3.connect(temp_db_path)
+            cursor = db_mg.conn.cursor()
+            
+            # Drop all the new views in the backup database
+            db_mg.drop_views_in_backup_db("main", cursor)
+
+            # Attach the backup database
+            cursor.execute(f"ATTACH DATABASE '{backup_db_path}' AS backup_db")
+            cursor.execute(f"ATTACH DATABASE '{bundled_db_path}' AS bundled_db")
+            
+            # Drop all the new views in the backup and bundled databases
+            db_mg.drop_views_in_backup_db("backup_db", cursor)
+            db_mg.drop_views_in_backup_db("bundled_db", cursor)
+            
+            # Dictionary mapping table names to functions to be executed if those tables are missing
+            table_list = db_mg.table_dict
+            
+            # Dictionary mapping views to functions to be executed if those tables are missing
+            view_list = db_mg.view_dict       
+            
+            for table, action in table_list.items():
+                flag = "table"
+                # Check if the table does not exist in the main (temporary) database
+                if not db_mg.check_type_exists(cursor, table, flag):
+                    # Now, check if the table exists in the backup database
+                    if not db_mg.check_type_exists(cursor, table, flag, "backup_db") or db_mg.check_type_exists(cursor, table, flag, "bundled_db"):
+                        # Execute the function linked to the table name in table_list
+                        action()  
+            
+            # Load views from view_list
+            for view, action in view_list.items():
+                flag = "view"
+                # If the view does not exist in the main database or is outdated
+                if not db_mg.check_type_exists(cursor, view, flag, "main") or (not db_mg.check_type_exists(cursor, view, flag, "backup_db")) or (not db_mg.check_type_exists(cursor, view, flag, "bundled_db")):
+                    if view == "vAccountsInfo_":
+                        # Execute the method to get the SQL view name and SQL statement
+                        sql_view_name, sql_statement = action()
+                        # Remove the view from the backup database
+                        for i, view_name in enumerate(sql_view_name):
+                            # Create or update the view using the action function in the main database
+                            db_mg.db_create_views(view_name, sql_statement[i])                   
+                    else:
+                        # Create or update the view using the action function in the main database
+                        sql_view_name, sql_statement = action()       
+                        db_mg.db_create_views(sql_view_name, sql_statement)    
+                
+            # Commit any changes and detach the backup database
+            db_mg.conn.commit()
+            cursor.execute("DETACH DATABASE 'backup_db'")
+            cursor.execute("DETACH DATABASE 'bundled_db'")
+        except sqlite3.Error as e:
+            print(f"An error occurred during merging: {e}")
+            db_mg.conn.rollback()
+        finally:
+            cursor.close()
+            db_mg.conn.close()
+            
     @staticmethod
     def zip_encrypt(directory_path, zip_file_path, password):
         """ 
@@ -518,6 +585,47 @@ class Database_File_Handler(Database):
             # Windows (using Explorer)
             subprocess.call(['start', dirPath], shell=True)
 
+    def backup_volume(self):
+        """ 
+        Function Name: backup_volume
+        Function Purpose: Back up the previously created database volume and append the new volume to the database
+        """      
+        # Declare Local Variables
+        db_path = self.db_path
+        db_backup_path = self.db_backup_path
+
+        # Ensure DatabaseDir exists in the CWD
+        backup_dir = os.path.join(db_backup_path)
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+            
+        # Get the latest backup file
+        latest_backup = max(glob.glob(f"{backup_dir}/*.bak"), key=os.path.getctime) if glob.glob(f"{backup_dir}/*.bak") else None
+
+        try:
+            # Create a backup file path with a timestamp
+            if backup_dir is None:
+                backup_file = f"{db_backup_path}/{os.path.basename(db_path)}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak"
+            else:
+                # Use the given backup path
+                backup_file = f"{backup_dir}/{os.path.basename(db_path)}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak"
+
+            if latest_backup:
+                # Copy the latest backup file to the new backup path
+                shutil.copy2(latest_backup, backup_file)
+            else:
+                # Copy the database file to the backup path if no previous backups exist
+                shutil.copy2(db_path, backup_file)
+
+            # Zip and encrypt the database back up file
+            zip_file_path = os.path.join(db_backup_path, f"{os.path.basename(db_path)}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
+            self.zip_encrypt(backup_file, zip_file_path, self.db_password)
+
+            # Remove the .bak file to save only the zip file
+            os.remove(backup_file)
+                    
+        except Exception as e:
+            print(f"Backup failed. Error: {str(e)}")
 
 #######################################################################################################
 # Database Management Handler Class
@@ -580,61 +688,6 @@ class Database_Management_Handler(Database_Connection_Handler):
         except sqlite3.Error as e:
             print(f"Error checking table existence: {e}")
             return False
-        
-    def merge_databases(self, bundled_db_path, temp_db_path, backup_db_path):
-        """
-        Function Name: merge_databases
-        Function Purpose: Merge new tables to the rolling database.
-        """
-        try:
-            # Connect to the temporary database
-            self.conn = sqlite3.connect(temp_db_path)
-            cursor = self.conn.cursor()
-            
-            # Drop all the new views in the backup database
-            self.drop_views_in_backup_db("main", cursor)
-
-            # Attach the backup database
-            cursor.execute(f"ATTACH DATABASE '{backup_db_path}' AS backup_db")
-            cursor.execute(f"ATTACH DATABASE '{bundled_db_path}' AS bundled_db")
-            
-            # Drop all the new views in the backup and bundled databases
-            self.drop_views_in_backup_db("backup_db", cursor)
-            self.drop_views_in_backup_db("bundled_db", cursor)
-            
-            # Dictionary mapping table names to functions to be executed if those tables are missing
-            loadList = self.table_dict
-            
-            # Dictionary mapping views to functions to be executed if those tables are missing
-            viewList = self.view_dict       
-            
-            for table, action in loadList.items():
-                flag = "table"
-                # Check if the table does not exist in the main (temporary) database
-                if not self.check_type_exists(cursor, table, flag):
-                    # Now, check if the table exists in the backup database
-                    if not self.check_type_exists(cursor, table, flag, "backup_db") or self.check_type_exists(cursor, table, flag, "bundled_db"):
-                        # Execute the function linked to the table name in loadList
-                        action(Database)  
-            
-            # Load views from viewList
-            for view, action in viewList.items():
-                flag = "view"
-                # If the view does not exist in the main database or is outdated
-                if not self.check_type_exists(cursor, view, flag, "main") or (not self.check_type_exists(cursor, view, flag, "backup_db")) or (not self.check_type_exists(cursor, view, flag, "bundled_db")):
-                    # Create or update the view using the action function in the main database
-                    action(Database)             
-                
-            # Commit any changes and detach the backup database
-            self.conn.commit()
-            cursor.execute("DETACH DATABASE 'backup_db'")
-            cursor.execute("DETACH DATABASE 'bundled_db'")
-        except sqlite3.Error as e:
-            print(f"An error occurred during merging: {e}")
-            self.conn.rollback()
-        finally:
-            cursor.close()
-            self.conn.close()
 
     def drop_db_object(self, cursor, object_name, object_type='table', db_alias="main"):
         """
@@ -661,26 +714,6 @@ class Database_Management_Handler(Database_Connection_Handler):
         except sqlite3.Error as e:
             print(f"Error dropping {object_type} '{object_name}' in database {db_alias}: {e}")
             
-    def drop_view(self, cursor, view_name, db_alias="main"):
-        """
-        Function Name: drop_view
-        Function Purpose: Drops a view from the database.
-
-        :param cursor: The database cursor.
-        :param view_name: The name of the view to drop.
-        """
-        # Validate view_name against a pattern or known list
-        if not re.match("^[a-zA-Z0-9_]+$", view_name):
-            print(f"Invalid view name: {view_name}")
-            return
-        
-        try:
-            # SQL command to drop the view
-            cursor.execute(f"DROP VIEW IF EXISTS {db_alias}.{view_name}")
-            print(f"View '{view_name}' dropped successfully.")
-        except sqlite3.Error as e:
-            print(f"Error dropping view '{view_name}' in database {db_alias}: {e}")
-            
     def drop_views_in_backup_db(self, db_alias, cursor):
         """
         Function Name: drop_views_in_backup_db
@@ -691,7 +724,17 @@ class Database_Management_Handler(Database_Connection_Handler):
         """
         # Drop each view in the dict key list
         for view in self.view_dict.keys():
-            self.drop_db_object(cursor, view, 'view', db_alias)
+            if view == "vAccountsInfo_":
+                # Get the SQL view name and SQL statement
+                set_method = self.view_dict[view]
+
+                # Execute the method to get the SQL view name and SQL statement
+                sql_view_name_tuple = set_method()
+                # Remove the view from the backup database
+                for view_name in sql_view_name_tuple[0]:
+                    self.drop_db_object(cursor, view_name, 'view', db_alias)
+            else:
+                self.drop_db_object(cursor, view, 'view', db_alias)
         
     def db_create_script(self):
         """ 

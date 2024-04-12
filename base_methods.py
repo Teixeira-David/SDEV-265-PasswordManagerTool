@@ -21,6 +21,7 @@ from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
 # Import project modules
+from database_script import Database_File_Handler
 
 
 #######################################################################################################
@@ -141,8 +142,9 @@ class Base_Ui_Methods():
         frame. If the user clicks 'Exit', the widow is destroyed and the user is sent back to main menu 
         """       
         # Display the user ask question to see if the user would like to exit the program
-        if messagebox.askyesno(message="CAUTION! \n\n Would you like to exit the program?", icon='question'):        
-            self.destroy()   
+        if messagebox.askyesno(message="CAUTION! \n\n Would you like to exit the program?", icon='question'):          
+            # Backup the database if the user closes the window
+            Database_File_Handler.backup_volume(Database_File_Handler)
             sys.exit()
             
 
