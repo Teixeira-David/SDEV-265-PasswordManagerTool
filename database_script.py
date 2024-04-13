@@ -2005,10 +2005,10 @@ class Database_Management_Handler(Database_Connection_Handler):
         # Define data to be inserted
         table_values_list = [
             [1, 4, 'Uppercase, Lowercase,', 30, 'Test Data Insertion'],
-            [2, 8, 'Number, Special Character', 30, 'Test Data Insertion'],
-            [3, 12, 'Uppercase, Lowercase, Number', 180, 'Test Data Insertion'],
-            [4, 16, 'Lowercase, Number, Special Character', 365, 'Test Data Insertion'],
-            [5, 32, 'Uppercase, Lowercase, Number, Special Character', 90, 'Test Data Insertion'],
+            [2, 8, 'Numerics, Special Symbols', 30, 'Test Data Insertion'],
+            [3, 12, 'Uppercase, Lowercase, Numerics', 180, 'Test Data Insertion'],
+            [4, 16, 'Lowercase, Numerics, Special Symbols', 365, 'Test Data Insertion'],
+            [5, 32, 'Uppercase, Lowercase, Numerics, Special Symbols', 90, 'Test Data Insertion'],
         ]
         
         # Insert each set of data into the table

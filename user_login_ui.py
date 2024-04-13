@@ -24,6 +24,7 @@ from PIL import Image, ImageTk
 from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
+from edit import CustomPasswordGen_UiComposable
 
 
 
@@ -272,7 +273,7 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function creates the buttons for the main UI
         """
         # Stylize buttons to match the image
-        Button(self.ui_frame, text="Generate", width=10, command=self.submit_btn).place(relx=0.9, y=180, anchor="e")
+        Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn).place(relx=0.9, y=180, anchor="e")
         Button(self.ui_frame, text="Back", width=10, command=self.back_btn).place(relx=0.3, y=340, anchor="center")
         Button(self.ui_frame, text="Reset", width=10, command=self.clear_entry).place(relx=0.5, y=340, anchor="center")
         Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=340, anchor="center")
@@ -342,7 +343,16 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods):
         self.destroy_child_frame()
         
         # Create the new user frame
-        
+
+    def generate_btn(self):
+        """ 
+        Function Name: back_btn
+        Function Purpose: This function is executed once the user clicks on the exit button inside the result
+        frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
+        """       
+        # Load the generate custom frame Ui
+        self.controller.show_frame("CustomPasswordGen_UiComposable")
+          
     def back_btn(self):
         """ 
         Function Name: back_btn

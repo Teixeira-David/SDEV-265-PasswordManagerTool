@@ -34,11 +34,11 @@ class PasswordWithPolicy():
     Class Description: This class gets and sets password information 
     """
     # Establish Class Constants
-    VALID_LENGTHS = [4, 8, 12, 16, 32]
+    VALID_LENGTHS = [8, 10, 12, 16, 32]
     VALID_EXPIRY_PERIODS = [30, 90, 180, 365]
     
     # Common base class for all passwords information. Instantiates the base class
-    def __init__(self, password_policy_id=0, char_min_length=4, include_uppercase=True, include_lowercase=True, 
+    def __init__(self, password_policy_id=0, char_min_length=8, include_uppercase=True, include_lowercase=True, 
                 include_digits=True, include_special=True, expiry_period_length=30):
         self.password_policy_id = password_policy_id
         self.char_min_length = char_min_length
@@ -52,8 +52,7 @@ class PasswordWithPolicy():
         self.password = ""
         self.creation_date = datetime.now()
         self.expiry_date = self.creation_date + timedelta(days=self.expiry_period_length) # use timedelta to add days to the current date
-        
-    # setter method 
+         
     def generate_password(self):
         """
         Function Name: generate_password
@@ -113,7 +112,6 @@ class PasswordWithPolicy():
             self.expiry_period_length = expiry_period_length
             self.set_expiry(self.expiry_period_length)  
                     
-    # setter method
     def set_expiry(self, period_days):
         """
         Function Name: set_expiry
