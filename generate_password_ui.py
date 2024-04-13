@@ -224,8 +224,6 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPoli
             
             # Delete the newly generated password so the data does not persist in some address in RAM
             
-            # Destroy the window and return to last page
-            self.back_btn()
             
         except ValueError as e:
             # If setters raise a ValueError, inform the user
@@ -285,8 +283,12 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPoli
         # Display the newly generated password and gain user acceptance
         if messagebox.askyesno(message=f'ATTENTION! \n\n The newly generated password is: \n\n {pwp.password} \n\n Do you want to use this password?'):
             print("User accepted the new password")
+            # Destroy the window and return to last page
+            self.back_btn()
         else:
             print("User declined the new password")
+            # Rest the entry fields
+            self.clear_entry()
 
     def add_new_custom_password_btn(self):
         """ 
