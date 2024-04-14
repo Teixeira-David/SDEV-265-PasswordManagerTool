@@ -27,6 +27,7 @@ from base_methods import Base_Ui_Methods
 from user_login_ui import UserLogin_UiComposable, AddNewUser_UiComposable
 from database_script import Database, Database_File_Handler
 from generate_password_ui import CustomPasswordGen_UiComposable
+from edit import MainDashboard_UiComposable
 
 
 #######################################################################################################
@@ -86,7 +87,12 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         self.frames = {}
         
         # Create the frames for the main UI
-        for FrameClass in [UserLogin_UiComposable, AddNewUser_UiComposable, CustomPasswordGen_UiComposable]:
+        for FrameClass in [
+            UserLogin_UiComposable, 
+            AddNewUser_UiComposable, 
+            CustomPasswordGen_UiComposable,
+            MainDashboard_UiComposable,
+            ]:
             # Create the frame and add it to the stack
             frame = FrameClass(parent=self.main_container, controller=self)
             # Add the frame to the stack

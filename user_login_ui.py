@@ -24,7 +24,7 @@ from PIL import Image, ImageTk
 from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
-from edit import CustomPasswordGen_UiComposable
+from edit import MainDashboard_UiComposable
 
 
 
@@ -133,30 +133,33 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: submit_btn
         Function Purpose: This function is executed once the user enters their user name and password
         """
-        # Get the user input
-        username = self.username_entry.get()
-        password = self.password_entry.get()
+        # Debugging for routing
+        self.controller.show_frame("MainDashboard_UiComposable")
+        
+        # # Get the user input
+        # username = self.username_entry.get()
+        # password = self.password_entry.get()
 
-        try:
-            # Attempt to create a User object with the provided credentials
-            user = User(username=username, user_password=password)
+        # try:
+        #     # Attempt to create a User object with the provided credentials
+        #     user = User(username=username, user_password=password)
             
-            # At this point, the input is valid as per our setters
+        #     # At this point, the input is valid as per our setters
             
-            # Now you would proceed with a database check here for getting the primary key ID's
+        #     # Now you would proceed with a database check here for getting the primary key ID's
             
-            # Set the user content and prep for db dump
+        #     # Set the user content and prep for db dump
             
-            # Delete the username and password entry fields so the data does not persist in some address in RAM
+        #     # Delete the username and password entry fields so the data does not persist in some address in RAM
             
-            # Destroy the window and open the main dashboard
+        #     # Destroy the window and open the main dashboard
             
             
-        except ValueError as e:
-            # If setters raise a ValueError, inform the user
-            messagebox.showwarning("Input Error", str(e))
-            # Here, clear the entries or highlight them to indicate an error
-            self.set_bg_to_white(self.entry_widget_list)                     
+        # except ValueError as e:
+        #     # If setters raise a ValueError, inform the user
+        #     messagebox.showwarning("Input Error", str(e))
+        #     # Here, clear the entries or highlight them to indicate an error
+        #     self.set_bg_to_white(self.entry_widget_list)                     
             
     def clear_entry(self):
         """ 

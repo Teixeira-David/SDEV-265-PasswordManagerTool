@@ -24,19 +24,19 @@ from PIL import Image, ImageTk
 from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
-
+from tool_tip import CreateToolTip
 
 
 
 #######################################################################################################
-# Custom Password Generator Class
+# Main Dashboard Ui Composable Class
 #######################################################################################################
 
-class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
+class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
     """
-    Class Name: CustomPasswordGen_UiComposable
-    Class Description: This class is the custom password generator page of the program where the user 
-    can create a custom password based of provided parameters.
+    Class Name: MainDashboard_UiComposable
+    Class Description: This class is the main dashboard page of the program where the user 
+    can choose to navigate through the various password detail pages and CRUD settings.
     """
     def __init__(self, parent, controller, *args, **kwargs):
         """ 
@@ -54,33 +54,176 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         Function Name: create_ui_frame
         Description: Creates a fixed-size frame for UI elements.
-        """
+        """ 
+        # Get the screen width and height 
+        self.width_size = self.winfo_screenwidth() 
+        self.height_size = self.winfo_screenheight()
+        
         # Adjust the size as needed
-        self.parent_ui_frame(600, 400)
+        self.parent_ui_frame(self.width_size, self.height_size)
         
         # Call this method to set up the header frame
-        self.create_logo_image()
+        self.set_dashboard_bg_img(self.width_size, self.height_size)
         
-        # Call the methods to set labels, entry fields, and buttons within this ui_frame 
-        self.create_labels()
-        self.create_entry_fields()
-        self.create_buttons()
+        # Create the file menu
+        self.file_menu_composable()
+        
+        # Create the main container for dynamic columns
+        self.primary_sidebar_composable()
+        
+        # Create the dynamic column 
+        self.create_dynamic_column()
 
-    def create_logo_image(self):
+    def file_menu_composable(self):
         """
-        Function Name: create_logo_image
-        Description: Sets up the frame containing the application's logo.
+        Function Name: file_menu_composable
+        Description: This function creates the file menu for the main Ui Dashboard fragment
         """
-        logo_path = "ic_logo_small_medium.png" # logo file path. Should be stored in cwd
-        self.create_sml_ul_image_canvas(
-            image_path=logo_path, 
-            canvas_width=100, 
-            canvas_height=100, 
-            image_width=90, 
-            image_height=90, 
-            padding=(80,10)
-            ) # Call the method to create the image frame
+        # Create a menu bar
+        self.menu_bar = tk.Menu(self.controller)
         
+        # Add 'File' menu
+        self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.file_menu.add_command(label="New", command=self.new_menu_btn)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self.quit)
+        self.menu_bar.add_cascade(label="File", menu=self.file_menu)
+
+        # Add 'Edit' menu
+        self.edit_menu_btn = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Edit", menu=self.edit_menu_btn)
+
+        # Add 'View' menu
+        self.view_menu_btn = tk.Menu(self.menu_bar, tearoff=0)
+        self.view_menu_btn.add_command(label="Zoom In", command=self.edit_menu_btn)
+        self.menu_bar.add_cascade(label="View", menu=self.view_menu_btn)
+
+        # Add 'Help' menu
+        self.help_menu_btn = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Help", menu=self.help_menu_btn)
+        
+        # Set the menu bar on the controller (root window)
+        self.controller.config(menu=self.menu_bar)
+        
+    def new_menu_btn(self):
+        """
+        Function Name: new_menu_btn
+        Description: This function is executed when the user clicks on the 'New' option in the file menu.
+        """
+        # Functionality to menu item
+        messagebox.showinfo("New", "Create a new file...")
+
+    def edit_menu_btn(self):
+        """
+        Function Name: edit_menu_btn
+        Description: This function is executed when the user clicks on the 'Edit' option in the file menu.
+        """
+        # Functionality to menu item
+        messagebox.showinfo("Edit", "Edit an account...")
+        
+    def view_menu_btn(self):
+        """
+        Function Name: view_menu_btn
+        Description: This function is executed when the user clicks on the 'View' option in the file menu.
+        """
+        # Functionality to menu item
+        messagebox.showinfo("View", "View and account...")
+        
+    def help_menu_btn(self):
+        """
+        Function Name: help_menu_btn
+        Description: This function is executed when the user clicks on the 'Help' option in the file menu.
+        """
+        # Functionality to menu item
+        messagebox.showinfo("Help", "Help needed with application...")
+
+    def primary_sidebar_composable(self):
+        """
+        Function Name: primary_sidebar_composable
+        Description: This function creates the sidebar for the main UI
+        """
+        # Create a sidebar frame
+        self.sidebar = tk.Frame(self, width=200, bg='#dddddd')
+        self.sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0)
+
+        # Define icon paths and corresponding tooltips, excluding the settings icon for now
+        icon_info = [
+            ('ic_favorite.png', "Favorites", self.populate_sub_menu_options),
+        ]
+
+        # Load, resize icons, and create buttons with tooltips
+        for icon_path, tooltip_text, action in icon_info:
+            self.create_icon_button(icon_path, tooltip_text, action)
+
+        # Separately handle the settings icon to place it at the bottom
+        self.create_icon_button('ic_setting.png', "Settings", self.load_settings_composable, place_bottom=True)
+
+    def create_dynamic_column(self):
+        """
+        Function Name: create_dynamic_column
+        Description: This function creates the dynamic column for the main UI
+        """
+        # Create the Paned_window widget
+        self.paned_window = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        
+        # Create the dynamic column as a Frame
+        self.dynamic_column = tk.Frame(self.paned_window, bg='lightgrey', width=200)
+        
+        # Add the dynamic column to the Paned_window but don't pack it yet
+        self.paned_window.add(self.dynamic_column, weight=1)
+
+        # Keep commented out to ensure there is no re-sizeable handle
+        # Create a handle for resizing
+        self.handle = ttk.Separator(self.paned_window, orient=tk.VERTICAL)
+        self.paned_window.add(self.handle, weight=0)
+
+        # Bind the handle to a method that resizes the paned window
+        self.handle.bind('<B1-Motion>', self.resize_pane)
+
+    def resize_pane(self, event):
+        """
+        Function Name: resize_pane
+        Description: This function resizes the pane based on the event
+        """
+        # Calculate the new width for the dynamic column
+        new_width = event.x
+        
+        # Set minimum width to prevent the pane from becoming too small
+        min_width = 100  # Minimum width in pixels
+        if new_width < min_width:
+            new_width = min_width
+        
+        # Adjust the width of the dynamic column
+        self.dynamicColumn.config(width=new_width)
+        
+        # Update the Panedwindow sash position
+        self.paned_window.sash_place(0, new_width, 0)
+        
+    def create_icon_button(self, icon_path, tooltip_text, action, place_bottom=False):
+        """
+        Function Name: create_icon_button
+        Description: Helper function to create an icon button with a tooltip.
+        """
+        icon = self.resize_Icon(icon_path)
+        button_canvas = tk.Canvas(self.sidebar, width=50, height=50, bg='#dddddd', highlightthickness=0, bd=0)
+        if place_bottom:
+            button_canvas.pack(side='bottom', pady=10)
+        else:
+            button_canvas.pack(pady=10)
+        button_canvas.create_image(25, 25, image=icon)
+        button_canvas.bind("<Button-1>", lambda event, a=action, btn=button_canvas: self.onIconClick(event, a, btn))  # Bind to onIconClick
+        CreateToolTip(button_canvas, tooltip_text)
+        button_canvas.image = icon  # Keep a reference to avoid garbage collection
+
+    def resize_Icon(self, icon_path, size=(32, 32)):
+        """
+        Function Name: resize_Icon
+        Description: This function resizes the icon to the specified width and height
+        """
+        image = Image.open(icon_path)
+        resized_image = image.resize(size, Image.Resampling.LANCZOS)
+        return ImageTk.PhotoImage(resized_image)
+
     def create_labels(self):
         """
         Function Name: create_labels
@@ -105,89 +248,6 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
 
         # Create labels and radio buttons for Expiry Period
         self.set_expiry_period_rb_buttons()
-            
-    def set_char_len_rb_buttons(self, base_relx=0.35, bg_color='white'):
-        """
-        Function Name: set_char_len_rb_buttons
-        Description: This function creates the radio buttons for the character length
-        """
-        # Create and place entry fields to match 
-        rb_char_len_list = (8,10,12,16,32)
-        # Variables to hold the selected options
-        self.rb_char_len_var = tk.IntVar(value=8)
-        # Set the spacing for the buttons
-        char_len_spacing = 0.125
-        # Y-positions for the buttons
-        y_pos_char_len = 160
-
-        # Create labels and radio buttons for Character Length
-        for i, option in enumerate(rb_char_len_list):
-            tk.Label(
-                self.ui_frame, 
-                text=str(option),
-                bg=bg_color
-                ).place(relx=base_relx + (i*char_len_spacing+0.003), y=y_pos_char_len - 20)
-            tk.Radiobutton(
-                self.ui_frame,
-                variable=self.rb_char_len_var,
-                value=option,
-                bg=bg_color
-            ).place(relx=base_relx + i*char_len_spacing, y=y_pos_char_len)
-            
-    def set_char_set_chk_buttons(self, base_relx=0.35, bg_color='white'):
-        """
-        Function Name: set_char_set_chk_buttons
-        Description: This function creates the check buttons for the character set
-        """
-        # Create and place entry fields to match 
-        rb_char_set_list = ("Uppercase", "Lowercase", "Numerics", " Special Symbols")
-        # Variables to hold the selected options
-        self.rb_char_set_vars = {option: tk.BooleanVar(value=True) for option in rb_char_set_list}
-        # Set the spacing for the buttons
-        char_set_spacing = 0.130
-        # Y-positions for the buttons
-        y_pos_char_set = 220
- 
-         # Create labels and checkboxes for Character Set
-        for i, option in enumerate(rb_char_set_list):
-            tk.Label(
-                self.ui_frame, 
-                text=option,
-                bg=bg_color
-                ).place(relx=base_relx + i*char_set_spacing, y=y_pos_char_set - 20)
-            tk.Checkbutton(
-                self.ui_frame,
-                variable=self.rb_char_set_vars[option],
-                bg=bg_color
-            ).place(relx=base_relx + i*char_set_spacing, y=y_pos_char_set)
-            
-    def set_expiry_period_rb_buttons(self, base_relx=0.35, bg_color='white'):
-        """
-        Function Name: set_expiry_period_rb_buttons
-        Description: This function creates the radio buttons for the expiry period
-        """
-        # Create and place entry fields to match 
-        rb_expiry_period_list = (30,90,180,365)
-        # Variables to hold the selected options
-        self.rb_expiry_period_var = tk.IntVar(value=30)
-        # Set the spacing for the buttons
-        expiry_spacing = 0.125
-        # Y-positions for the buttons
-        y_pos_expiry_period = 280
-
-        # Create labels and radio buttons for Expiry Period
-        for i, option in enumerate(rb_expiry_period_list):
-            tk.Label(
-                self.ui_frame, 
-                text=f"{option} Days",
-                bg=bg_color
-                ).place(relx=base_relx + i*expiry_spacing, y=y_pos_expiry_period - 20)
-            tk.Radiobutton(
-                self.ui_frame,
-                variable=self.rb_expiry_period_var,
-                value=option,
-                bg=bg_color
-            ).place(relx=base_relx + i*expiry_spacing, y=y_pos_expiry_period)
         
     def create_buttons(self):
         """
@@ -253,19 +313,22 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
             self.rb_char_set_vars[option].set(True)
         self.rb_expiry_period_var.set(30) # Set the default value for the radio button or expiry period
 
-    def generate_new_custom_password_btn(self):
+    def populate_sub_menu_options(self):
         """ 
-        Function Name: generate_new_custom_password_btn
+        Function Name: populate_sub_menu_options
         Function Purpose: This function executes when the user clicks on 'Generate' button to create a new custom password
         """
-        print("Generate new custom password")
+        print("populate_sub_menu_options triggered")
 
-    def add_new_custom_password_btn(self):
-        """ 
-        Function Name: add_new_custom_password_btn
-        Function Purpose: This function executes when the user accepts the newly created password.
+        # Clear previous content if any
+        self.remove_Widget_Options()
+
+    def load_settings_composable(self, frame):
         """
-        print("Add new custom password")
+        Function Name: load_settings_composable
+        Description: This function loads the Auto Belay UI Composable
+        """
+        print("load_settings_composable triggered") 
         
     def back_btn(self, back_stack_frame=None):
         """ 

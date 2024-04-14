@@ -41,13 +41,13 @@ class Base_Ui_Methods():
         self.frames = {}
         super().__init__(*args, **kwargs)
         
-    def parent_ui_frame(self, frame_width, frame_height):
+    def parent_ui_frame(self, frame_width, frame_height, bg_color='white'):
         """
         Function Name: parent_ui_frame
         Description: Creates a fixed-size frame for UI elements.
         """
         # Adjust the size as needed
-        self.ui_frame = Frame(self, width=frame_width, height=frame_height, bg='white')  
+        self.ui_frame = Frame(self, width=frame_width, height=frame_height, bg=bg_color)  
         self.ui_frame.pack_propagate(False)  # Prevents the frame from resizing to fit its contents
         self.ui_frame.place(relx=0.5, rely=0.5, anchor="center")  # Center the frame within the main_container
         
@@ -84,6 +84,62 @@ class Base_Ui_Methods():
         
         # Create the image on the canvas with the northwest (upper left) anchor
         self.canvas.create_image(0, 0, anchor="nw", image=self.shield_photoimage)
+        
+    def set_dashboard_bg_img(self, width_size, height_size):
+        """
+        Function Name: set_dashboard_bg_img
+        Description: This function creates the background image for the main UI
+        """
+        # Set the flag to indicate the background image is hidden
+        self.is_bg_img_hidden = False
+        
+        # Bind the resize event
+        self.bind("<Configure>", self.on_window_resize) 
+        
+        # Load the image
+        image_path = "ic_logo_med_bg_low_opacity.png"
+        image = Image.open(image_path)
+
+        # Convert the image to RGBA (if not already in this mode)
+        image = image.convert("RGBA")
+
+        # Process the image to remove white background
+        datas = image.getdata()
+        newData = []
+        for item in datas:
+            # Change all white (also shades of whites)
+            # pixels to transparent
+            if item[0] > 200 and item[1] > 200 and item[2] > 200:  # Adjust the RGB values as needed
+                newData.append((255, 255, 255, 0))
+            else:
+                newData.append(item)
+
+        # Update image with processed data
+        image.putdata(newData)
+
+        # Convert processed image for Tkinter
+        self.bg_image = ImageTk.PhotoImage(image)
+
+        # Create a Canvas for the background image
+        self.bg_canvas = tk.Canvas(self.ui_frame, width=width_size, height=height_size)
+        self.bg_canvas.pack(fill="both", expand=True)
+
+        # Calculate the center position and place the image
+        center_x = width_size // 2 - self.bg_image.width() // 2
+        center_y = height_size // 2 - self.bg_image.height() // 2
+        self.bg_image_id = self.bg_canvas.create_image(center_x, center_y, anchor="nw", image=self.bg_image)
+
+    def remove_background_image(self):
+        """
+        Function Name: remove_background_image
+        Description: This function removes the background image from the main UI.
+        """
+        # Set the flag to indicate the background image is hidden
+        self.is_bg_img_hidden = True
+        
+        # Unbind the resize event
+        self.bg_canvas.delete(self.bg_image_id)
+        self.bg_canvas.destroy()
         
     def position_ui_frame(self):
         """
