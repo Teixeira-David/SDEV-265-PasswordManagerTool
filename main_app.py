@@ -27,7 +27,7 @@ from base_methods import Base_Ui_Methods
 from user_login_ui import UserLogin_UiComposable, AddNewUser_UiComposable
 from database_script import Database, Database_File_Handler
 from generate_password_ui import CustomPasswordGen_UiComposable
-from edit import MainDashboard_UiComposable
+from dashboard_ui import MainDashboard_UiComposable
 
 
 #######################################################################################################

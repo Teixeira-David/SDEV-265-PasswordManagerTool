@@ -83,7 +83,10 @@ class CreateToolTip(object):
         """
         # This function is used to display the tooltip.
         x = self.widget.winfo_rootx() + self.widget.winfo_width() / 2  # Center of the widget horizontally
-        y = self.widget.winfo_rooty() + self.widget.winfo_height()  # Just below the widget
+        if self.text == "Settings":
+            y = self.widget.winfo_rooty() - 25  # Just above the widget
+        else:
+            y = self.widget.winfo_rooty() + self.widget.winfo_height()  # Just below the widget
         # Creates a toplevel window
         self.tw = tk.Toplevel(self.widget)
         # Leaves only the label and removes the app window
