@@ -21,23 +21,24 @@ from datetime import date, datetime, timedelta
 from dateutil import parser
 
 # Import project modules
-
+from password_object_class import PasswordWithPolicy
+from database_script import Database_Query_Handler
 
 
 
 #######################################################################################################
 # User Class
 #######################################################################################################         
-class User():
+class User(Database_Query_Handler):
     """
     Class Name: User
     Class Description: This class gets and sets User information 
     """
     # Create class variable shared amongst all User methods
-    auser_id = []   
+    user_id_list = []   
     
     # Common base class for all Users information. Instantiates the base class
-    def __init__(self, user_id=0, username="", user_password="",  user_email="", registration_date=None):
+    def __init__(self, user_id=0, username="", user_password="",  user_email="default@gmail.com", registration_date=datetime.now()):
         self.user_id = user_id
         self.username = username
         self.user_password = user_password
@@ -90,7 +91,13 @@ class User():
     def user_password(self, value): 
         # The value must be a string and must not be empty
         if not isinstance(value, str) or value.isspace():
+            self.delete_user_data()
             raise ValueError('Password cannot be empty')
+        # Validate the password based off password policy
+        pp = PasswordWithPolicy()
+        pp.assess_password_strength(value)
+        # If the password is valid, set the password with a hash value of SHAH-512
+        value = pp.hash_password(value)
         self._user_password = value
 
     # setter method 
@@ -117,6 +124,36 @@ class User():
         else:
             raise TypeError('Registration date must be a datetime object, a recognizable date string, or None')
 
+    def validate_user_login_cred(self):
+        """ 
+        Function Name: validate_user_login_cred
+        Function Description: This function validates the user login credentials
+        """   
+        # Set the tuple arguments
+        table = 'TUsers'
+        username_col = 'strUserName'
+        password_col = 'strUserPassword'
+        values = (self.username, self.user_password)
+        
+        sql = f"""
+                SELECT 
+                    {username_col}, {password_col}
+                FROM 
+                    {table}
+                WHERE 
+                    {username_col} = ?
+                AND 
+                    {password_col} = ?
+                """
+
+        # Compare the user input with the database
+        db_qh = Database_Query_Handler()
+        
+        if db_qh.get_target_db_record(sql, values):
+            return True
+        else:
+            return False
+        
     def delete_user_data(self):
         """ 
         Function Name: delete_user_data
@@ -127,4 +164,4 @@ class User():
         self._user_password = ""
         self._user_email = ""
         self._registration_date = None 
-        User.auser_id = []   
+        User.user_id_list = []   

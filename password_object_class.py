@@ -12,6 +12,7 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
+import hashlib
 import re
 from tkinter import *
 from tkinter import messagebox, ttk, Listbox
@@ -53,6 +54,21 @@ class PasswordWithPolicy():
         self.creation_date = datetime.now()
         self.expiry_date = self.creation_date + timedelta(days=self.expiry_period_length) # use timedelta to add days to the current date
          
+    @staticmethod
+    def hash_password(password):
+        """ 
+        Function Name: hash_Password
+        Function Description: Hash the password and return the hash value.
+        """        
+        # Declare Local Variables
+        password = str(password)
+
+        # Convert the string into hash data and return the encrypted password
+        password = hashlib.sha512((password.encode())).hexdigest()
+
+        # Return Hash value of password
+        return password
+    
     def generate_password(self):
         """
         Function Name: generate_password
@@ -152,9 +168,7 @@ class PasswordWithPolicy():
         root.withdraw()  
 
         # Use policy attributes for dynamic validation
-        if self.validate_password(password):
-            messagebox.showinfo("Password Strength", "Your password meets the data protection policy and is considered strong.")
-        else:
+        if not self.validate_password(password):
             suggestions = [
                 "increase its length to at least {} characters".format(self.char_min_length),
                 "include at least one digit" if self.include_digits else "",
@@ -162,9 +176,9 @@ class PasswordWithPolicy():
                 "include at least one special character" if self.include_special else ""
             ]
             suggestions = [s for s in suggestions if s]  # Remove empty suggestions
-            warning_message = "Your password does not meet the data protection policy. Consider to " + ", ".join(suggestions) + "."
+            warning_message = "Your password does not meet the data protection policy.\n\n Consider to " + ", ".join(suggestions) + "."
             messagebox.showwarning("Password Strength", warning_message)
-                
+    
     def delete_password_data(self):
         """ 
         Function Name: delete_password_data

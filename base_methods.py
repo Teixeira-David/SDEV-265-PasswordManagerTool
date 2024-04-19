@@ -30,7 +30,7 @@ from database_script import Database_File_Handler
 
 class Base_Ui_Methods():
     """
-    Class Name: BaseMethods
+    Class Name: Base_Ui_Methods
     Class Description: This is the base class for all the methods that are used in the application.
     """
     def __init__(self, *args, **kwargs):
@@ -191,6 +191,29 @@ class Base_Ui_Methods():
         for e in entry_widgets:
             e.configure(background='White')
         
+    def set_bg_to_yellow(self, entry_widgets):
+        """ 
+        Function Name: set_bg_to_yellow
+        Function Purpose: This function is executed if the user input is invalid. The fields 
+        should have their background color should be set to yellow to indicate the invalid fields.
+        """
+        # Clear out the background colors and set to default as 'white'
+        for e in entry_widgets:
+            e.configure(background='Yellow')
+            
+    def set_invalid(self, entry_widgets, msg="", widget_item=0):
+        """
+        Method Name: set_invalid
+        Description: Highlights the input field to indicate invalid data and sets focus.
+        """
+        self.clear_entry_widget(entry_widgets)
+        self.set_bg_to_yellow(entry_widgets)
+        entry_widgets[widget_item].focus()
+        if msg == "":
+            pass 
+        else:
+            messagebox.showwarning("Input Error", msg)
+            
     def exit_app_btn(self):
         """ 
         Function Name: exit_app_btn
@@ -202,7 +225,26 @@ class Base_Ui_Methods():
             # Backup the database if the user closes the window
             Database_File_Handler.backup_volume(Database_File_Handler)
             sys.exit()
-            
 
-            
-                
+# #######################################################################################################
+# # Base Static Methods Class
+# #######################################################################################################
+
+# class Base_Static_Methods():
+#     """
+#     Class Name: Base_Static_Methods
+#     Class Description: This is the base class for all the static methods that commonly used.
+#     """
+
+#     def set_invalid(input_field, msg="", widget_item=0):
+#         """
+#         Method Name: set_invalid
+#         Description: Highlights the input field to indicate invalid data and sets focus.
+#         """
+        
+#         input_field.configure(background='Yellow')
+#         input_field[widget_item].focus()
+#         if msg == "":
+#             pass 
+#         else:
+#             messagebox.showwarning("Input Error", msg)

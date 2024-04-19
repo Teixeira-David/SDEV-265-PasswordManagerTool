@@ -641,7 +641,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes 
         """
-        # First connect to the db
+        # First set the connection to none
         self.conn = None
 
         # Dictionary mapping table names to functions to be executed if those tables are missing
@@ -1086,7 +1086,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         except sqlite3.Error as e:
             print(f"Error executing SQL statement: {e}")
             self.conn.rollback()   
-    
+            
     #######################################################################################################
     # Database Tables
     #######################################################################################################         
@@ -1937,7 +1937,7 @@ class Database_Management_Handler(Database_Connection_Handler):
             ]
         table_values_list = [
             'cipher_admin',
-            'admin123',
+            '03447b830d36c4def996d565bef520e58286867d0d19e20d40b87701d3fa221ea03bd091fc3161ed2d85ac7853534ab9219bbe1af1eefbb662670c0c57937308',
             'admin@ciphershield.com',
             todays_date,
             'Test Data Insertion',
@@ -2080,3 +2080,44 @@ class Database_Management_Handler(Database_Connection_Handler):
         for values in table_values_list:
             params = (table_name, table_col_list, values, prim_id)
             self.insert_or_update_values(params)
+
+
+#######################################################################################################
+# Database Query Handler Class
+#######################################################################################################
+
+class Database_Query_Handler(Database_Connection_Handler):
+    """
+    Class Name: Database_Connection_Handler
+    Class Description: This class is the main NOSQL database (SQLite3) for the entire program
+    """    
+    def __init__(self):
+        """ 
+        Function Name: __init__
+        Function Purpose: Instantiate the class objects and attributes 
+        """
+        # First set the connection to none
+        self.conn = None
+        
+    def get_target_db_record(self, sql, values=None):
+        """
+        Function Name: get_target_db_record
+        Function Purpose: Execute the given SQL statement and return the desired DB value
+        """
+        # Check if the connection is available
+        if not self.conn:
+            try: 
+                self.db_connect()
+            except sqlite3.Error as e:
+                print(f"Error connecting to the database: {e}")
+                return
+            
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql, values)
+            result = cursor.fetchone()
+            cursor.close()
+            return result[0] if result else None
+        except sqlite3.Error as e:
+            print(f"Error executing SQL statement: {e}")
+            return None

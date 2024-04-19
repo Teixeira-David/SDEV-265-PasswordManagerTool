@@ -167,7 +167,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         icon_info = [
             ('ic_all_accounts.png', "All Accounts", self.load_all_accounts_composable),
             ('ic_social_media.png', "Social Media", self.load_social_media_composable),
-            ('ic_webservice.png', "Web Services", self.load_web_services_composable),
+            ('ic_web_service.png', "Web Services", self.load_web_services_composable),
             ('ic_finance.png', "Finance", self.load_finance_composable),
             ('ic_personal.png', "Personal", self.load_personal_composable),
         ]

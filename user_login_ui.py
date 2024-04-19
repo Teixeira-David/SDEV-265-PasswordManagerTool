@@ -22,9 +22,7 @@ from PIL import Image, ImageTk
 
 # Import project modules
 from user_object_class import User
-from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
-from edit import MainDashboard_UiComposable
 
 
 
@@ -133,33 +131,40 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: submit_btn
         Function Purpose: This function is executed once the user enters their user name and password
         """
-        # Debugging for routing
-        self.controller.show_frame("MainDashboard_UiComposable")
+        # Declare the Error Message
+        error_msg = "Invalid Username or Password"
         
-        # # Get the user input
-        # username = self.username_entry.get()
-        # password = self.password_entry.get()
+        # Get the user input
+        username = self.username_entry.get()
+        password = self.password_entry.get()
 
-        # try:
-        #     # Attempt to create a User object with the provided credentials
-        #     user = User(username=username, user_password=password)
+        try:
+            # Attempt to create a User object with the provided credentials
+            usr_obj = User(username=username, user_password=password)
             
-        #     # At this point, the input is valid as per our setters
+            # At this point, the input is valid as per our setters and need to check with the db if the values exist
+            bln_flag = usr_obj.validate_user_login_cred()
             
-        #     # Now you would proceed with a database check here for getting the primary key ID's
-            
-        #     # Set the user content and prep for db dump
-            
-        #     # Delete the username and password entry fields so the data does not persist in some address in RAM
-            
-        #     # Destroy the window and open the main dashboard
-            
-            
-        # except ValueError as e:
-        #     # If setters raise a ValueError, inform the user
-        #     messagebox.showwarning("Input Error", str(e))
-        #     # Here, clear the entries or highlight them to indicate an error
-        #     self.set_bg_to_white(self.entry_widget_list)                     
+            # Now check if the flag is true or false to proceed
+            if bln_flag:
+                # Delete the username and password entry fields so the data does not persist in some address in RAM
+                self.clear_entry_widget(self.entry_widget_list)
+                usr_obj.delete_user_data()
+                
+                # User input is valid and the user is authenticated proceed to the main dashboard
+                self.controller.show_frame("MainDashboard_UiComposable")
+            else:
+                # User input is invalid and the user is not authenticated
+                self.set_invalid(self.entry_widget_list, error_msg, 0)
+                # Delete the username and password entry fields so the data does not persist in some address in RAM
+                usr_obj.delete_user_data()
+                return
+        
+        except ValueError as e:
+            # If setters raise a ValueError, inform the user
+            messagebox.showwarning("Input Error", str(e))
+            # Here, clear the entries or highlight them to indicate an error
+            self.set_bg_to_white(self.entry_widget_list)                     
             
     def clear_entry(self):
         """ 
