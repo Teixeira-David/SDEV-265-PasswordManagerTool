@@ -938,7 +938,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     key_id = self.get_max_prim_keys(table_name, prim_id)
                     
                 # Insert the prim_id into the first position of the values list
-                table_col_list.insert(0, prim_id) if count == 0 else table_col_list
+                table_col_list.insert(0, prim_id) if count >= 0 else table_col_list
                 table_values_list.insert(0, key_id)
                 insert_params = (table_name, table_col_list, table_values_list)
                 self.insert_values(insert_params)

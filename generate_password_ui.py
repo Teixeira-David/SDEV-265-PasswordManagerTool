@@ -24,6 +24,7 @@ from PIL import Image, ImageTk
 from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
+from user_login_ui import AddNewUser_UiComposable
 
 
 
@@ -31,7 +32,7 @@ from base_methods import Base_Ui_Methods
 # Custom Password Generator Class
 #######################################################################################################
 
-class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
+class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
     """
     Class Name: CustomPasswordGen_UiComposable
     Class Description: This class is the custom password generator page of the program where the user 
@@ -45,7 +46,8 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPoli
         # Create the root tkinter variable
         super().__init__(parent, *args, **kwargs)
         self.controller = controller # Set the controller object for direction flow
-        
+        self.controller.shared_data = {'generated_password': None}  # Initializing shared data
+
         # Create the main Ui Frame
         self.create_ui_frame()    
 
@@ -218,12 +220,17 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPoli
         Function Purpose: This function is executed once the user selects the password parameters
         """
         try:
-            # Attempt to create a newly custom password with the provided credentials and 
-            # request user acceptance and prep for db dump
-            self.generate_new_custom_password()
-            
-            # Delete the newly generated password so the data does not persist in some address in RAM
-            
+            # Attempt to create a newly custom password with the provided credentials
+            generated_password = self.generate_new_custom_password()
+            # Ask the user if they want to use the generated password
+            if messagebox.askyesno("Password Generation", f"The newly generated password is: \n\n{generated_password}\n\nDo you want to use this password?"):
+                # Save the password in shared_data
+                self.controller.shared_data['generated_password'] = generated_password
+                # Optionally switch back to the Add New User frame
+                self.controller.show_frame("AddNewUser_UiComposable")
+            else:
+                print("User declined the new password")
+                self.clear_entry()
             
         except ValueError as e:
             # If setters raise a ValueError, inform the user
@@ -279,16 +286,7 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPoli
         
         # Generate the password
         pwp.generate_password()
-        
-        # Display the newly generated password and gain user acceptance
-        if messagebox.askyesno(message=f'ATTENTION! \n\n The newly generated password is: \n\n {pwp.password} \n\n Do you want to use this password?'):
-            print("User accepted the new password")
-            # Destroy the window and return to last page
-            self.back_btn()
-        else:
-            print("User declined the new password")
-            # Rest the entry fields
-            self.clear_entry()
+        return pwp.password
 
     def add_new_custom_password_btn(self):
         """ 

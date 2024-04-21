@@ -226,25 +226,18 @@ class Base_Ui_Methods():
             Database_File_Handler.backup_volume(Database_File_Handler)
             sys.exit()
 
-# #######################################################################################################
-# # Base Static Methods Class
-# #######################################################################################################
-
-# class Base_Static_Methods():
-#     """
-#     Class Name: Base_Static_Methods
-#     Class Description: This is the base class for all the static methods that commonly used.
-#     """
-
-#     def set_invalid(input_field, msg="", widget_item=0):
-#         """
-#         Method Name: set_invalid
-#         Description: Highlights the input field to indicate invalid data and sets focus.
-#         """
+    def show_frame(self, frame_name):
+        """
+        Function Name: show_frame
+        Description: This function shows the frame inside the main container
+        """
+        # Get the frame from the frame stack
+        frame = self.frames.get(frame_name)
+        if frame:
+            frame.tkraise()  # Ensuring that the show method is called when the frame is raised
+            if hasattr(frame, 'show'):
+                frame.show()  # Call show method explicitly if defined in the frame
+        else:
+            print(f"No frame with name {frame_name} found.")
+            
         
-#         input_field.configure(background='Yellow')
-#         input_field[widget_item].focus()
-#         if msg == "":
-#             pass 
-#         else:
-#             messagebox.showwarning("Input Error", msg)

@@ -22,14 +22,14 @@ from dateutil import parser
 
 # Import project modules
 from password_object_class import PasswordWithPolicy
-from database_script import Database_Query_Handler
+from database_script import Database_Query_Handler, Database_Management_Handler
 
 
 
 #######################################################################################################
 # User Class
 #######################################################################################################         
-class User(Database_Query_Handler):
+class User(Database_Query_Handler, Database_Management_Handler):
     """
     Class Name: User
     Class Description: This class gets and sets User information 
@@ -44,6 +44,7 @@ class User(Database_Query_Handler):
         self.user_password = user_password
         self.user_email = user_email 
         self.registration_date = registration_date
+        self.conn = None
         
     # Property decorator object get function to access private User ID
     @property
@@ -99,6 +100,7 @@ class User(Database_Query_Handler):
         # If the password is valid, set the password with a hash value of SHAH-512
         value = pp.hash_password(value)
         self._user_password = value
+        pp.delete_password_data()
 
     # setter method 
     @user_email.setter 
@@ -153,6 +155,37 @@ class User(Database_Query_Handler):
             return True
         else:
             return False
+        
+    def add_new_user(self):
+        """ 
+        Function Name: add_new_user
+        Function Description: This function adds a new user to the database
+        """   
+       # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TUsers'
+        table_col_list = [
+            'strUserName', 
+            'strUserPassword', 
+            'strUserEmail', 
+            'dtmRegistrationDate', 
+            'strModifiedReason'
+            ]
+        table_values_list = [
+            self.username,
+            self.user_password,
+            self.user_email,
+            todays_date,
+            'New User Registration',
+        ]
+        prim_id = 'intUserID'
+        
+        # Package parameters
+        params = (table_name, table_col_list, table_values_list, prim_id)
+        # Call insert_or_update_values with the prepared parameters
+        self.insert_or_update_values(params)
         
     def delete_user_data(self):
         """ 

@@ -60,6 +60,9 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         # Create the main container
         self.create_main_container()    
         
+        # Set the shared data variable
+        self.shared_data = {}
+        
         # Create the main frame directory
         self.init_frames()
         
@@ -104,19 +107,6 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         
         # Show initial frame
         self.show_frame("UserLogin_UiComposable")
-
-    def show_frame(self, frame_name):
-        """
-        Function Name: show_frame
-        Description: This function shows the frame inside the main container
-        """
-        # Get the frame from the frame stack
-        frame = self.frames.get(frame_name)
-        if frame:
-            # Raise the frame to the top of the stack
-            frame.tkraise()
-        else:
-            print(f"No frame with name {frame_name} found.")
             
 def init_primary_boot_methods():
     """ 
