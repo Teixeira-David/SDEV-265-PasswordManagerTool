@@ -14,9 +14,9 @@ for the most up-to-date version.
 # Import Python Libraries
 import re
 import sys
-from tkinter import *
-from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
+from tkinter import *
+from tkinter import messagebox, ttk, Listbox, simpledialog
 from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
@@ -148,8 +148,8 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         char_set_spacing = 0.130
         # Y-positions for the buttons
         y_pos_char_set = 220
- 
-         # Create labels and checkboxes for Character Set
+
+        # Create labels and checkboxes for Character Set
         for i, option in enumerate(rb_char_set_list):
             tk.Label(
                 self.ui_frame, 
@@ -222,6 +222,7 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         try:
             # Attempt to create a newly custom password with the provided credentials
             generated_password = self.generate_new_custom_password()
+            
             # Ask the user if they want to use the generated password
             if messagebox.askyesno("Password Generation", f"The newly generated password is: \n\n{generated_password}\n\nDo you want to use this password?"):
                 # Save the password in shared_data
@@ -307,5 +308,75 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
             self.controller.show_frame(back_stack_frame)
         else:
             self.controller.show_frame("AddNewUser_UiComposable")  
-        
- 
+            
+#######################################################################################################
+# Copyable Password Dialog Class
+#######################################################################################################
+
+class CopyablePasswordDialog_UiComposable(simpledialog.Dialog):
+    """
+    Class Name: CopyablePasswordDialog
+    Class Description: This class is the dialog box that appears when the user generates a new password. The user
+    can copy the password to the clipboard or click 'OK' to close the dialog box.
+    """
+    def __init__(self, parent, title, password):
+        """ 
+        Function Name: __init__
+        Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
+        """      
+        # Create the root tkinter variable  
+        super().__init__(parent, title)
+        self.password = password
+
+    def body(self, frame):
+        """
+        Function Name: body
+        Function Purpose: This function creates the body of the dialog box
+        """
+        tk.Label(frame, text="The newly generated password is:").pack(padx=5, pady=5)
+        self.entry = tk.Entry(frame, width=40)
+        self.entry.pack(padx=5, pady=5)
+        self.entry.insert(0, self.password)
+        self.entry.focus()
+        return self.entry
+
+    def buttonbox(self):
+        """
+        Function Name: buttonbox
+        Function Purpose: This function creates the buttons for the dialog box
+        """
+        box = tk.Frame(self)
+        w = tk.Button(box, text="Copy", width=10, command=self.copy_password)
+        w.pack(side=tk.LEFT, padx=5, pady=5)
+        w = tk.Button(box, text="OK", width=10, command=self.ok)
+        w.pack(side=tk.LEFT, padx=5, pady=5)
+        self.bind("<Return>", self.ok)
+        box.pack()
+
+    def copy_password(self):
+        """
+        Function Name: copy_password
+        Function Purpose: This function copies the password to the clipboard
+        """
+        self.clipboard_clear()
+        self.clipboard_append(self.password)
+        self.entry.selection_range(0, tk.END)
+        messagebox.showinfo("Copied", "Password copied to clipboard!")
+
+    def ok(self, event=None):
+        """
+        Function Name: ok
+        Function Purpose: This function closes the dialog box
+        """
+        self.withdraw()
+        self.update_idletasks()
+        self.cancel()
+
+    def cancel(self, event=None):
+        """
+        Function Name: cancel
+        Function Purpose: This function closes the dialog box
+        """
+        # put focus back to the parent window
+        self.parent.focus_set()
+        self.destroy()

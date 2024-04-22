@@ -170,7 +170,7 @@ class Base_Ui_Methods():
             self.ui_frame.destroy()
             self.ui_frame = None # Set to None to prevent memory leaks
 
-    def clear_entry_widget(self, entry_widgets):
+    def clear_entry_widget(self, entry_widgets, widget_index=0):
         """ 
         Function Name: clear_entry_widget
         Function Purpose: This function is executed if the user clicks 'clear' or 'reset'. The fields 
@@ -178,9 +178,12 @@ class Base_Ui_Methods():
         of the first element to have focus.
         """
         # Delete the content of the entry widgets
-        for e in entry_widgets:
-            e.delete(0, END)
-
+        for i, widget in enumerate(entry_widgets):
+            widget.delete(0, END)
+            # Set focus to the first widget in the list
+            if i == widget_index:
+                widget.focus()
+                
     def set_bg_to_white(self, entry_widgets):
         """ 
         Function Name: set_bg_to_white
@@ -201,17 +204,24 @@ class Base_Ui_Methods():
         for e in entry_widgets:
             e.configure(background='Yellow')
             
-    def set_invalid(self, entry_widgets, msg="", widget_item=0):
+    def set_invalid(self, widgets, msg=""):
         """
         Method Name: set_invalid
         Description: Highlights the input field to indicate invalid data and sets focus.
         """
-        self.clear_entry_widget(entry_widgets)
-        self.set_bg_to_yellow(entry_widgets)
-        entry_widgets[widget_item].focus()
-        if msg == "":
-            pass 
+        if isinstance(widgets, list):
+            # If a list of widgets is provided
+            self.clear_entry_widget(widgets)
+            # Set the background color to yellow for all widgets
+            self.set_bg_to_yellow(widgets)
         else:
+            # Single widget provided
+            widgets.delete(0, END)
+            widgets.configure(background='Yellow')
+            widgets.focus()
+
+        # Display the error message
+        if msg:
             messagebox.showwarning("Input Error", msg)
             
     def exit_app_btn(self):
@@ -239,5 +249,24 @@ class Base_Ui_Methods():
                 frame.show()  # Call show method explicitly if defined in the frame
         else:
             print(f"No frame with name {frame_name} found.")
+            
+    def toggle_password(self, entry):
+        """
+        Function Name: toggle_password
+        Description: This function toggles the visibility of the password in the entry widget.
+        """
+        if isinstance(entry, list):
+            # Toggle the show attribute of the entry widget
+            for e in entry:
+                if e.cget('show') == '':
+                    e.config(show='*')
+                else:
+                    e.config(show='')
+        else:
+            if entry.cget('show') == '':
+                entry.config(show='*')
+            else:
+                entry.config(show='')
+
             
         

@@ -12,6 +12,7 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
+import bcrypt
 import hashlib
 import re
 from tkinter import *
@@ -53,41 +54,94 @@ class PasswordWithPolicy():
         self.password = ""
         self.creation_date = datetime.now()
         self.expiry_date = self.creation_date + timedelta(days=self.expiry_period_length) # use timedelta to add days to the current date
-         
+        
     @staticmethod
-    def hash_password(password):
+    def hash_password(password, cost=12):
         """ 
-        Function Name: hash_Password
-        Function Description: Hash the password and return the hash value.
-        """        
-        # Declare Local Variables
-        password = str(password)
+        Function Name: hash_password
+        Function Description: Hash the password using bcrypt, applying a specified work factor (cost).
+        
+        Parameters:
+        - password (str): The plain text password to hash.
+        - cost (int): The cost factor that defines the complexity of the salt generation.
+        
+        Returns:
+        - str: A hashed password which includes the salt.
+        """
+        # Convert the password to bytes
+        password = password.encode()
 
-        # Convert the string into hash data and return the encrypted password
-        password = hashlib.sha512((password.encode())).hexdigest()
+        # Generate a salt with the specified cost factor
+        salt = bcrypt.gensalt(rounds=cost)
 
-        # Return Hash value of password
-        return password
+        # Hash the password with the generated salt
+        hashed_password = bcrypt.hashpw(password, salt)
+
+        # Return the hashed password as a string to store in the database
+        return hashed_password.decode()
+    
+    @staticmethod
+    def verify_password(plain_password, hashed_password):
+        """
+        Verify that a plaintext password matches the hashed version.
+        
+        Parameters:
+        - plain_password (str): The plain text password to verify.
+        - hashed_password (str): The hashed password from the database.
+        
+        Returns:
+        - bool: True if passwords match, False otherwise.
+        """
+        # Encode the plain password and hashed password to bytes
+        plain_password = plain_password.encode()
+        hashed_password = hashed_password.encode()
+
+        # Use bcrypt to check if the hashed password matches the plain password
+        return bcrypt.checkpw(plain_password, hashed_password)
     
     def generate_password(self):
         """
         Function Name: generate_password
         Description: Generate a random password based on the specified criteria.
         """
-        # Get the character set 
+        # Declare Local Variables
         character_set = ''
+        guaranteed_characters = []
+
+        # Create a character set based on the password policy
         if self.include_uppercase:
             character_set += string.ascii_uppercase
+            guaranteed_characters.append(random.choice(string.ascii_uppercase))
+        
         if self.include_lowercase:
             character_set += string.ascii_lowercase
+            guaranteed_characters.append(random.choice(string.ascii_lowercase))
+        
         if self.include_digits:
             character_set += string.digits
+            guaranteed_characters.append(random.choice(string.digits))
+        
         if self.include_special:
             character_set += string.punctuation
+            guaranteed_characters.append(random.choice(string.punctuation))
+        
+        # Calculate the remaining length after guaranteed characters
+        remaining_length = self.char_min_length - len(guaranteed_characters)
+        
+        # Generate the rest of the password with random characters from the full set
+        if remaining_length > 0:
+            random_characters = [random.choice(character_set) for _ in range(remaining_length)]
+            complete_password = guaranteed_characters + random_characters
+        else:
+            # In rare cases where char_min_length is exceeded by guaranteed characters, truncate appropriately
+            complete_password = guaranteed_characters[:self.char_min_length]
 
-        # Convert the character set to a list for random sampling
-        self.password = ''.join(random.choice(character_set) for _ in range(self.char_min_length))
+        # Shuffle the complete password to remove any patterns
+        random.shuffle(complete_password)
+        self.password = ''.join(complete_password)
 
+        #print(self.password)  # To see the output immediately for testing
+        
     def is_password_expired(self):
         """
         Function Name: is_password_expired
@@ -109,7 +163,7 @@ class PasswordWithPolicy():
             return False
 
     def update_policy(self, char_min_length=None, include_uppercase=None, include_lowercase=None, 
-                      include_digits=None, include_special=None, expiry_period_length=None):
+                    include_digits=None, include_special=None, expiry_period_length=None):
         """
         Function Name: update_policy
         Description: Updates the password policy based on provided arguments.
@@ -146,13 +200,15 @@ class PasswordWithPolicy():
         """
         # Create a list of all the possible conditions(bool) of the password policy and return 
         conditions = [
-            len(password) >= self.char_min_length,
-            any(c.isupper() for c in password) if self.include_uppercase else True,
-            any(c.islower() for c in password) if self.include_lowercase else True,
-            any(c.isdigit() for c in password) if self.include_digits else True,
-            any(c in string.punctuation for c in password) if self.include_special else True
+            (len(password) >= self.char_min_length, "increase its length to at least {} characters".format(self.char_min_length)),
+            (any(c.isupper() for c in password), "include at least one uppercase letter") if self.include_uppercase else (True, ""),
+            (any(c.islower() for c in password), "include at least one lowercase letter") if self.include_lowercase else (True, ""),
+            (any(c.isdigit() for c in password), "include at least one digit") if self.include_digits else (True, ""),
+            (any(c in string.punctuation for c in password), "include at least one special character") if self.include_special else (True, "")
         ]
-        return all(conditions)
+        #print(conditions)
+        # Returns False and list of failed conditions if not all are True
+        return all(cond[0] for cond in conditions), [cond[1] for cond in conditions if not cond[0]]
 
     def assess_password_strength(self, password=None):
         """
@@ -162,23 +218,23 @@ class PasswordWithPolicy():
         """
         if password is None:
             password = self.password
+            
+        # Use policy attributes for dynamic validation
+        valid, suggestions = self.validate_password(password)
+
+        # Use policy attributes for dynamic validation
+        if not valid:
+            # Filter out empty suggestions and join the remaining with a comma
+            suggestions = filter(None, suggestions)
+            warning_message = ("Your password is considered weak and does not meet the data protection policy. "
+                            "\n\nWhile you can still use this password, we strongly recommend that you "
+                            + ", ".join(suggestions) + " to enhance your security.")
+            messagebox.showwarning("Password Recommendation", warning_message)
 
         # Hide the root window
         root = tk.Tk()
         root.withdraw()  
 
-        # Use policy attributes for dynamic validation
-        if not self.validate_password(password):
-            suggestions = [
-                "increase its length to at least {} characters".format(self.char_min_length),
-                "include at least one digit" if self.include_digits else "",
-                "include both uppercase and lowercase letters" if self.include_uppercase or self.include_lowercase else "",
-                "include at least one special character" if self.include_special else ""
-            ]
-            suggestions = [s for s in suggestions if s]  # Remove empty suggestions
-            warning_message = "Your password does not meet the data protection policy.\n\n Consider to " + ", ".join(suggestions) + "."
-            messagebox.showwarning("Password Strength", warning_message)
-    
     def delete_password_data(self):
         """ 
         Function Name: delete_password_data

@@ -98,7 +98,7 @@ class User(Database_Query_Handler, Database_Management_Handler):
         pp = PasswordWithPolicy()
         pp.assess_password_strength(value)
         # If the password is valid, set the password with a hash value of SHAH-512
-        value = pp.hash_password(value)
+        #value = pp.hash_password(value)
         self._user_password = value
         pp.delete_password_data()
 
@@ -131,37 +131,62 @@ class User(Database_Query_Handler, Database_Management_Handler):
         Function Name: validate_user_login_cred
         Function Description: This function validates the user login credentials
         """   
-        # Set the tuple arguments
+        # Set the table and column names
         table = 'TUsers'
         username_col = 'strUserName'
         password_col = 'strUserPassword'
-        values = (self.username, self.user_password)
         
+        # SQL to fetch the hashed password from the database for the given username
         sql = f"""
                 SELECT 
-                    {username_col}, {password_col}
+                    {password_col}
                 FROM 
                     {table}
                 WHERE 
                     {username_col} = ?
-                AND 
-                    {password_col} = ?
                 """
 
-        # Compare the user input with the database
+        # Execute the query to get the hashed password
         db_qh = Database_Query_Handler()
-        
-        if db_qh.get_target_db_record(sql, values):
+        result = db_qh.get_target_db_record(sql, (self.username,))
+
+        # result should contain the hashed password
+        hashed_password = result
+            
+        # Verify the user-provided password against the hashed password
+        if PasswordWithPolicy.verify_password(self.user_password, hashed_password):
+            self.delete_user_data()
             return True
         else:
+            self.delete_user_data()
             return False
+        
+    def validate_unique_user_login_cred(self):
+        """ 
+        Function Name: validate_unique_user_login_cred
+        Function Description: This function validates the unique user login credentials
+        """   
+        # Set the table and column names
+        table = 'TUsers'
+        col_name_list = ['strUserName']
+        
+        # Execute the query to get all the records from the database
+        db_qh = Database_Query_Handler()
+        result = db_qh.get_all_db_record(col_name_list, table)
+
+        # Verify the user-provided username against the database does not exist
+        for i in result:
+            if self.username in i:
+                return False
+            
+        return True
         
     def add_new_user(self):
         """ 
         Function Name: add_new_user
         Function Description: This function adds a new user to the database
         """   
-       # Get today's date in YYYY-MM-DD format
+        # Get today's date in YYYY-MM-DD format
         todays_date = date.today().isoformat()
         
         # Define parameters for the insert_or_update_values method
@@ -175,7 +200,7 @@ class User(Database_Query_Handler, Database_Management_Handler):
             ]
         table_values_list = [
             self.username,
-            self.user_password,
+            PasswordWithPolicy.hash_password(self.user_password),
             self.user_email,
             todays_date,
             'New User Registration',

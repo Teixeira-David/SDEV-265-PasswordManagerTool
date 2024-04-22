@@ -19,6 +19,7 @@ from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
 from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
+from pyisemail import is_email
 
 # Import project modules
 from user_object_class import User
@@ -155,7 +156,7 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
                 self.controller.show_frame("MainDashboard_UiComposable")
             else:
                 # User input is invalid and the user is not authenticated
-                self.set_invalid(self.entry_widget_list, error_msg, 0)
+                self.set_invalid(self.entry_widget_list, error_msg)
                 # Delete the username and password entry fields so the data does not persist in some address in RAM
                 usr_obj.delete_user_data()
                 return
@@ -280,12 +281,18 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         Function Name: create_buttons
         Description: This function creates the buttons for the main UI
         """
+        # Toggle buttons for password reveal
+        pswrd_widgets = [self.first_password_entry, self.second_password_entry]
+        # Button(self.ui_frame, text="Show", command=self.toggle_password(pswrd_widgets)).place(relx=0.20, y=180, anchor="center")
+        Button(self.ui_frame, text="Show", command=self.toggle_password(pswrd_widgets)).place(relx=0.8, y=180, anchor="center")
+        
         # Stylize buttons to match the image
-        Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn).place(relx=0.9, y=180, anchor="e")
+        # Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn).place(relx=0.9, y=180, anchor="e")
+        Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn).place(relx=0.25, y=180, anchor="e")
         Button(self.ui_frame, text="Back", width=10, command=self.back_btn).place(relx=0.3, y=340, anchor="center")
         Button(self.ui_frame, text="Reset", width=10, command=self.clear_entry).place(relx=0.5, y=340, anchor="center")
         Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=340, anchor="center")
-                                                                                                            
+        
     def get_user_input(self):
         """ 
         Function Name: get_user_input
@@ -306,8 +313,8 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         Function Purpose: This function is executed once the user enters their user name and password
         """
         # Declare the Error Message
-        pswrd_error_msg = "Passwords do not match. Please try again."
-        invalid_msg = "Username already exists. Please create a unique username and try again."
+        invalid_pswrd_msg = "Passwords do not match. Please try again."
+        invalid_user_msg = "Username already exists. Please create a unique username and try again."
         
         # Get the valid user input
         input_list = self.get_user_input()
@@ -315,46 +322,41 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         # First check if the two user passwords are the same and if not, to return warning the user didn't 
         # enter the same password
         if input_list[1] != input_list[2]:
-            # Delete the user entry fields so the data does not persist in some address in RAM
-            self.set_invalid(self.entry_widget_list, pswrd_error_msg, 0)
+            self.set_invalid([self.first_password_entry, self.second_password_entry], invalid_pswrd_msg)
             return
-        
+
         try:
             # Attempt to create a User object with the provided credentials
             usr_obj = User(username=input_list[0], user_password=input_list[1], user_email=input_list[3])
             
-            # At this point, the input is valid as per our setters and need to check with the db if the values exist
-            bln_flag = usr_obj.validate_user_login_cred()
-            
-            # Now check if the flag is true or false to proceed
-            if not bln_flag:
-                # The new user information is authenticated and doesn't exist in the db. We can now add the user
-                if messagebox.askyesno(message=f"CAUTION! \n\n Proceed to add new user account '{input_list[0]}'?") is True:
-                    # Dump to db
+            # Validate unique username and email in the database
+            if usr_obj.validate_unique_user_login_cred():
+                response = messagebox.askyesno("Confirm New User", f"Proceed to add new user account '{input_list[0]}'?")
+                if response:
                     usr_obj.add_new_user()
-                    # Delete the username and password entry fields so the data does not persist in some address in RAM
                     self.clear_entry_widget(self.entry_widget_list)
                     usr_obj.delete_user_data()
-                    
-                    # Return back to the last page
                     self.back_btn()
+                else:
+                    self.set_invalid([self.username_entry], invalid_user_msg)
             else:
-                # User input is invalid and the user is not authenticated
-                self.set_invalid(self.entry_widget_list, invalid_msg, 0)
-                # Delete the username and password entry fields so the data does not persist in some address in RAM
-                usr_obj.delete_user_data()
-                return
+                self.set_invalid([self.username_entry], invalid_user_msg)
             
         except ValueError as e:
-            # If setters raise a ValueError, inform the user
-            messagebox.showwarning("Input Error", str(e))
-            # Here, clear the entries or highlight them to indicate an error
-            self.set_bg_to_white(self.entry_widget_list)                     
+            # Handle specific field errors based on message content
+            if 'username' in str(e).lower():
+                self.set_invalid([self.username_entry], str(e))
+            elif 'password' in str(e).lower():
+                self.set_invalid([self.first_password_entry, self.second_password_entry], str(e))
+            elif 'email' in str(e).lower():
+                self.set_invalid([self.email_entry], str(e))
+            else:
+                messagebox.showwarning("Input Error", str(e))                   
         
     def show(self):
         """
         Function Name: show
-         Description: This method is called whenever this frame is raised to the top.
+        Description: This method is called whenever this frame is raised to the top.
         It will check for a new password and fill the entry fields if available.
         """
         self.tkraise()  # Make sure the frame comes to the top
@@ -385,16 +387,6 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         # Return focus to first input
         self.entry_widget_list[0].focus()
 
-    def add_new_user(self):
-        """ 
-        Function Name: add_new_user
-        Function Purpose: This function executes when the user clicks on 'New' button to add a new user
-        """
-        # Destroy the UI Frame and its children widgets
-        self.destroy_child_frame()
-        
-        # Create the new user frame
-        
     def generate_btn(self):
         """ 
         Function Name: back_btn
@@ -409,5 +401,13 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         Function Name: back_btn
         Function Purpose: This function is executed once the user clicks on the exit button inside the result
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
-        """       
-        self.controller.show_frame("UserLogin_UiComposable")           
+        """    
+        # Clear all entry fields
+        self.clear_entry()
+        
+        # Optionally, clear any shared data related to this frame
+        if 'generated_password' in self.controller.shared_data:
+            del self.controller.shared_data['generated_password']
+        
+        # Navigate back to the login frame
+        self.controller.show_frame("UserLogin_UiComposable")       

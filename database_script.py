@@ -931,14 +931,28 @@ class Database_Management_Handler(Database_Connection_Handler):
             count = cursor.fetchone()[0]
 
             # If the table is empty, insert new values
-            if (count == 0) or key_id is None:
+            if (count == 0) and key_id is None:
                 # First check if the prim key is none
                 if not key_id:
                     # Get the max primary key
                     key_id = self.get_max_prim_keys(table_name, prim_id)
                     
                 # Insert the prim_id into the first position of the values list
-                table_col_list.insert(0, prim_id) if count >= 0 else table_col_list
+                table_col_list.insert(0, prim_id) if count == 0 else table_col_list
+                table_values_list.insert(0, key_id)
+                insert_params = (table_name, table_col_list, table_values_list)
+                self.insert_values(insert_params)
+            elif count > 0 and key_id is None:
+                # First check if the prim key is none
+                if not key_id:
+                    # Get the max primary key
+                    key_id = self.get_max_prim_keys(table_name, prim_id)
+                    
+                # Insert the prim_id into the first position of the values list
+                if prim_id in table_col_list:
+                    pass
+                else:
+                    table_col_list.insert(0, prim_id)
                 table_values_list.insert(0, key_id)
                 insert_params = (table_name, table_col_list, table_values_list)
                 self.insert_values(insert_params)
@@ -1937,7 +1951,8 @@ class Database_Management_Handler(Database_Connection_Handler):
             ]
         table_values_list = [
             'cipher_admin',
-            '03447b830d36c4def996d565bef520e58286867d0d19e20d40b87701d3fa221ea03bd091fc3161ed2d85ac7853534ab9219bbe1af1eefbb662670c0c57937308',
+            '$2b$12$r9zWBT3IYJZoUTUaFIgv2edgtcTtnn53jaEiDecBp06TyVb9WZbNe',
+            #'03447b830d36c4def996d565bef520e58286867d0d19e20d40b87701d3fa221ea03bd091fc3161ed2d85ac7853534ab9219bbe1af1eefbb662670c0c57937308',
             'admin@ciphershield.com',
             todays_date,
             'Test Data Insertion',
@@ -2023,7 +2038,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         """    
         # Get today's date in YYYY-MM-DD format
         todays_date = date.today().isoformat()
-              
+            
         # Define parameters for the insert_or_update_values method
         table_name = 'TPasswordHistory'
         table_col_list = [
@@ -2118,6 +2133,35 @@ class Database_Query_Handler(Database_Connection_Handler):
             result = cursor.fetchone()
             cursor.close()
             return result[0] if result else None
+        except sqlite3.Error as e:
+            print(f"Error executing SQL statement: {e}")
+            return None
+
+    def get_all_db_record(self, col_name_list, tbl_name):
+        """
+        Function Name: get_all_db_record
+        Function Purpose: Execute the given SQL statement and return all the DB values
+        """
+        # Set the SQL statement to find duplicate data entries
+        if len(col_name_list) > 1:
+            sql = f"SELECT {col_name_list[0]}, {col_name_list[1]} FROM {tbl_name}"
+        else:
+            sql = f"SELECT {col_name_list[0]} FROM {tbl_name}"
+            
+        # Check if the connection is available
+        if not self.conn:
+            try: 
+                self.db_connect()
+            except sqlite3.Error as e:
+                print(f"Error connecting to the database: {e}")
+                return
+            
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            result = cursor.fetchall()
+            cursor.close()
+            return result if result else None
         except sqlite3.Error as e:
             print(f"Error executing SQL statement: {e}")
             return None
