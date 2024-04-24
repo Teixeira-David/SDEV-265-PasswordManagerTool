@@ -102,11 +102,13 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
             self.frames[FrameClass.__name__] = frame
             # Ensure all frames are in the same grid cell and can expand/fill.
             frame.grid(row=0, column=0, sticky="nsew")
+            frame.grid_remove()
         self.main_container.grid_rowconfigure(0, weight=1)
         self.main_container.grid_columnconfigure(0, weight=1)
         
         # Show initial frame
-        self.show_frame("UserLogin_UiComposable")
+        self.show_frame("MainDashboard_UiComposable")
+        #self.show_frame("UserLogin_UiComposable")
             
 def init_primary_boot_methods():
     """ 

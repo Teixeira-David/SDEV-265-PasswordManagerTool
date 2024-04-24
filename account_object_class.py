@@ -20,7 +20,7 @@ import tkinter as tk
 from datetime import date, datetime, timedelta
 
 # Import project modules
-
+from database_script import Database_Query_Handler
 
 
 #######################################################################################################
@@ -32,7 +32,7 @@ class Account():
     Class Description: This class gets and sets Account information (fName, lName, Email)
     """
     # Create class variable shared amongst all Account methods
-    aaccount_id = []   
+    account_id_list = []   
     
     # Common base class for all Accounts information. Instantiates the base class
     def __init__(self, account_id=0, account_name="", account_username="", account_password="",  account_email="", category="", notes=""):
@@ -138,7 +138,23 @@ class Account():
         if not isinstance(value, str):
             raise ValueError('Notes must be a string')
         self._notes = value
-                
+    
+    @staticmethod
+    def get_all_account_info():
+        """ 
+        Function Name: get_all_account_info
+        Function Description: This function gets all the account records from the database
+        """   
+        # Set the table and column names
+        view = 'vAccountsInfo'
+        col_name_list = ['*']
+        
+        # Execute the query to get all the records from the database
+        db_qh = Database_Query_Handler()
+        result = db_qh.get_all_db_record(col_name_list, view)
+
+        return result
+    
     def delete_Account_data(self):
         """ 
         Function Name: delete_Account_data

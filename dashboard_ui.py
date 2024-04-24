@@ -25,6 +25,7 @@ from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
 from tool_tip import CreateToolTip
+from view_account_ui_dashboard import View_AccountInfo_UiComposable
 
 
 
@@ -46,7 +47,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         # Create the root tkinter variable
         super().__init__(parent, *args, **kwargs)
         self.controller = controller # Set the controller object for direction flow
-        
+        self.parent = parent
         # Create the main Ui Frame
         self.create_ui_frame()    
 
@@ -61,13 +62,16 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         self.currently_selected_icon = None
         self.is_favorites_clicked = False
         
+        # Initialize the sub frames stack
+        self.dashboard_frames = {}
+        
         # Get the screen width and height 
         self.width_size = self.winfo_screenwidth() 
         self.height_size = self.winfo_screenheight()
         
         # Adjust the size as needed
         self.parent_ui_frame(self.width_size, self.height_size)
-        
+
         # Call this method to set up the header frame
         self.set_dashboard_bg_img(self.width_size, self.height_size)
         
@@ -79,7 +83,23 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Create the dynamic column 
         self.create_dynamic_column()
+        
+        # # Init the dashboard frames
+        # self.init_dashboard_frames()
 
+    def init_dashboard_frames(self):
+        """
+        Function Name: init_dashboard_frames
+        Description: This function creates the dashboard frames container stack for the dashboard UI
+        """
+        # Add the frames for the dashboard
+        frame_classes = [View_AccountInfo_UiComposable]
+        for FrameClass in frame_classes:
+            frame = FrameClass(parent=self, controller=self.controller)
+            frame.pack(fill='both', expand=True)
+            frame.pack_forget()
+            self.dashboard_frames[FrameClass.__name__] = frame
+        
     def file_menu_composable(self):
         """
         Function Name: file_menu_composable
@@ -149,13 +169,11 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function creates the sidebar for the main UI
         """
         # Create a sidebar frame
-        self.sidebar = tk.Frame(self, width=200, bg='#dddddd')
-        self.sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0)
-
-        # Separately handle the settings icon to place it at the bottom
+        self.sidebar = tk.Frame(self, bg='#dddddd')
+        self.sidebar.pack(side='left', fill='y')
+        
+        # Separately handle the favorites and settings icon to place it at top and the bottom
         self.create_icon_button('ic_favorite.png', "Favorites", self.load_favorites_composable)
-
-        # Separately handle the settings icon to place it at the bottom
         self.create_icon_button('ic_setting.png', "Settings", self.load_settings_composable, place_bottom=True)
 
     def sub_sidebar_composable(self):
@@ -186,16 +204,13 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Create the dynamic column as a Frame
         self.dynamic_column = tk.Frame(self.paned_window, bg='#dddddd', width=60, highlightbackground='lightgrey', highlightthickness=0.5)
-        
-        # Add the dynamic column to the paned_window but don't pack it yet
         self.paned_window.add(self.dynamic_column, weight=1)
-
-        # Keep commented out to ensure there is no re-sizeable handle
+        
         # Create a handle for resizing
         self.handle = ttk.Separator(self.paned_window, orient=tk.VERTICAL)
-        self.paned_window.add(self.handle, weight=0)
+        self.paned_window.add(self.handle, weight=0)  # Add handle with no weight to ensure it doesn't expand
 
-        # Bind the handle to a method that resizes the paned window
+        # Bind the handle to a method that resizes the pane
         self.handle.bind('<B1-Motion>', self.resize_pane)
 
     def resize_pane(self, event):
@@ -216,25 +231,30 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Update the paned_window sash position
         self.paned_window.sash_place(0, new_width, 0)
-        
+
     def create_icon_button(self, icon_path, tooltip_text, action, sidebar='primary', place_bottom=False):
         """
         Function Name: create_icon_button
         Description: Helper function to create an icon button with a tooltip.
         """
+        # Resize the icon
         icon = self.resize_Icon(icon_path)
-        if sidebar == 'sub':
-            button_canvas = tk.Canvas(self.dynamic_column, width=50, height=50, bg='#dddddd', highlightthickness=0, bd=0)
-        else:
-            button_canvas = tk.Canvas(self.sidebar, width=50, height=50, bg='#dddddd', highlightthickness=0, bd=0)
+        
+        # Create a canvas for the icon
+        button_canvas = tk.Canvas(self.sidebar if sidebar == 'primary' else self.dynamic_column, 
+                                  width=50, height=50, bg='#dddddd', highlightthickness=0)
+        # Pack at the bottom if place_bottom is True
         if place_bottom:
             button_canvas.pack(side='bottom', pady=10)
         else:
-            button_canvas.pack(pady=10)
+            button_canvas.pack(pady=10)  # Regular packing for other icons
+        
+        # Create the icon image
+        button_canvas.pack(pady=10)
         button_canvas.create_image(25, 25, image=icon)
-        button_canvas.bind("<Button-1>", lambda event, a=action, btn=button_canvas: self.on_icon_click(event, a, btn))  # Bind to on_icon_click
+        button_canvas.bind("<Button-1>", lambda event, a=action, btn=button_canvas: self.on_icon_click(event, a, btn))
         CreateToolTip(button_canvas, tooltip_text)
-        button_canvas.image = icon  # Keep a reference to avoid garbage collection
+        button_canvas.image = icon # Keep a reference to avoid garbage collection
 
     def on_icon_click(self, event, action, button_canvas):
         """ 
@@ -245,19 +265,22 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         if self.currently_selected_icon:
             self.currently_selected_icon.configure(bg='#dddddd')  # Reset background to default
         # Highlight the currently selected icon
-        button_canvas.configure(bg='lightblue')  # Highlight selection
-        self.currently_selected_icon = button_canvas  # Update the reference to the currently selected icon
-        
-        # The rest of the logic remains the same
+        button_canvas.configure(bg='lightblue')
+        self.currently_selected_icon = button_canvas
+
+        # Check if same action is triggered and pane is visible
         if action == self.last_action and not self.paned_window_hidden:
-            # Hide the paned window if the same action is triggered and it's currently visible
             self.show_or_hide_pane()
         else:
-            # Show the paned window and populate options for any other cases
             if self.paned_window_hidden:
                 self.show_or_hide_pane()
-            action()  # Execute the corresponding action
-        self.last_action = action  # Update the last action
+            if callable(action):
+                action()
+            elif isinstance(action, str):
+                # Delegate frame management to the controller
+                self.controller.show_frame(action)
+
+        self.last_action = action       
         
     def show_or_hide_pane(self):
         """
@@ -272,6 +295,19 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
             # If shown, hide the paned window
             self.paned_window.place_forget()
             self.paned_window_hidden = True
+
+    def show_dashboard_frame(self, frame_name):
+        """
+        Function Name: show_dashboard_frame
+        Description: Show a specific frame by name, hiding others.
+        """
+        frame = self.dashboard_frames.get(frame_name)
+        if frame:
+            for f in self.dashboard_frames.values():
+                f.pack_forget()  # Hide all frames
+            frame.pack(fill='both', expand=True)  # Make the frame visible using pack
+        else:
+            print(f"Frame {frame_name} not found")
             
     def resize_Icon(self, icon_path, size=(32, 32)):
         """
@@ -306,6 +342,10 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function executes when the user clicks on 'All Accounts' button to display the UI composable
         """
         print("load_all_accounts_composable triggered")
+        # Call the accounts info composable
+        # Init the dashboard frames
+        self.init_dashboard_frames()
+        # self.show_dashboard_frame("View_AccountInfo_UiComposable")
 
     def load_social_media_composable(self):
         """ 
@@ -359,4 +399,3 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         else:
             self.controller.show_frame("UserLogin_UiComposable")  
         
- 

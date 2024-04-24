@@ -21,7 +21,6 @@ from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
 # Import project modules
-from database_script import Database_File_Handler
 
 
 #######################################################################################################
@@ -40,7 +39,7 @@ class Base_Ui_Methods():
         """   
         self.frames = {}
         super().__init__(*args, **kwargs)
-        
+
     def parent_ui_frame(self, frame_width, frame_height, bg_color='white'):
         """
         Function Name: parent_ui_frame
@@ -107,8 +106,7 @@ class Base_Ui_Methods():
         datas = image.getdata()
         newData = []
         for item in datas:
-            # Change all white (also shades of whites)
-            # pixels to transparent
+            # Change all white (also shades of whites) pixels to transparent
             if item[0] > 200 and item[1] > 200 and item[2] > 200:  # Adjust the RGB values as needed
                 newData.append((255, 255, 255, 0))
             else:
@@ -232,8 +230,6 @@ class Base_Ui_Methods():
         """       
         # Display the user ask question to see if the user would like to exit the program
         if messagebox.askyesno(message="CAUTION! \n\n Would you like to exit the program?", icon='question'):          
-            # Backup the database if the user closes the window
-            Database_File_Handler.backup_volume(Database_File_Handler)
             sys.exit()
 
     def show_frame(self, frame_name):
@@ -241,12 +237,29 @@ class Base_Ui_Methods():
         Function Name: show_frame
         Description: This function shows the frame inside the main container
         """
-        # Get the frame from the frame stack
+        # Hide all frames first
+        for frame in self.frames.values():
+            frame.grid_remove()
+
+        # Show the requested frame
         frame = self.frames.get(frame_name)
         if frame:
-            frame.tkraise()  # Ensuring that the show method is called when the frame is raised
+            frame.grid()
+            frame.tkraise()  # Bring the frame to the top
             if hasattr(frame, 'show'):
-                frame.show()  # Call show method explicitly if defined in the frame
+                frame.show()  # If the frame has a show method, call it
+        else:
+            print(f"No frame with name {frame_name} found.")
+            
+
+    def hide_frame(self, frame_name):
+        """
+        Function Name: hide_frame
+        Description: This function hides the specified frame.
+        """
+        frame = self.frames.get(frame_name)
+        if frame:
+            frame.grid_remove()
         else:
             print(f"No frame with name {frame_name} found.")
             
