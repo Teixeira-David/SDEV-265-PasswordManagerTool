@@ -108,7 +108,7 @@ class View_WebService_Accounts_UiComposable(tk.Frame):
         self.parent = parent
 
         # Set the tag name that controls what to load
-        self.tag = "Web_Services"
+        self.tag = "Web_Service"
         
         # Instantiate the base account ui composable
         self.ba_ui = Base_AccountInfo_UiComposable(parent=self.parent, controller=self.controller, tag=self.tag)

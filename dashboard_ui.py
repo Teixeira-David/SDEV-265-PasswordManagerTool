@@ -98,38 +98,6 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         #self.current_frame.pack(fill='both', expand=True)
         print(f"Loaded new frame: {frame_class.__name__}")
         
-    def init_dashboard_frames(self):
-        """
-        Function Name: init_dashboard_frames
-        Description: This function creates the dashboard frames container stack for the dashboard UI
-        """
-        # Define frame classes with their corresponding tags
-        frame_classes = {
-            'account_info': (View_AccountInfo_UiComposable, 'Account_Info'),
-            'social_media': (View_AccountInfo_UiComposable, 'Social_Media'),
-            'web_services': (View_AccountInfo_UiComposable, 'Web_Services'),
-            'finance': (View_AccountInfo_UiComposable, 'Finance'),
-            'personal': (View_AccountInfo_UiComposable, 'Personal'),
-        }
-        # Create and configure the frames for each category
-        self.dashboard_frames = {}
-        for tag, (FrameClass, tag_name) in frame_classes.items():
-            frame = FrameClass(parent=self, controller=self.controller, tag=tag_name)
-            frame.pack(fill='both', expand=True)
-            frame.pack_forget() # Hide the frame initially
-            self.dashboard_frames[tag] = frame
-            
-        # Spin up the account info frame
-        self.show_dashboard_frame('account_info')
-        
-        # # Add the frames for the dashboard
-        # frame_classes = [View_AccountInfo_UiComposable]
-        # for FrameClass in frame_classes:
-        #     frame = FrameClass(parent=self, controller=self.controller)
-        #     frame.pack(fill='both', expand=True)
-        #     frame.pack_forget()
-        #     self.dashboard_frames[FrameClass.__name__] = frame
-        
     def file_menu_composable(self):
         """
         Function Name: file_menu_composable
@@ -417,7 +385,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         print("load_personal_composable triggered")               
         # Show the 'social media' composable
         self.switch_composable(View_Personal_Accounts_UiComposable)
-          
+
     def clear_entry(self):
         """ 
         Function Name: clear_entry

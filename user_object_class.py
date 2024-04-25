@@ -97,10 +97,14 @@ class User(Database_Query_Handler, Database_Management_Handler):
         # Validate the password based off password policy
         pp = PasswordWithPolicy()
         pp.assess_password_strength(value)
-        # If the password is valid, set the password with a hash value of SHAH-512
-        #value = pp.hash_password(value)
-        self._user_password = value
-        pp.delete_password_data()
+        # If the password is valid, proceed. If not, raise an error and user needs a new password
+        if pp.get_password_validation_status() == True:
+            self._user_password = value
+            pp.delete_password_data()
+        else:
+            self.delete_user_data()
+            pp.delete_password_data()
+            raise ValueError(pp.warning_message)
 
     # setter method 
     @user_email.setter 

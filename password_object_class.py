@@ -52,6 +52,7 @@ class PasswordWithPolicy():
         
         # Set the default values for the class attributes
         self.password = ""
+        self.valid_password = False
         self.creation_date = datetime.now()
         self.expiry_date = self.creation_date + timedelta(days=self.expiry_period_length) # use timedelta to add days to the current date
         
@@ -216,6 +217,11 @@ class PasswordWithPolicy():
         Description: Assess the strength of the password's password.
         Directly shows a messagebox if the password is weak with suggestions for improvement.
         """
+        # Hide the root window
+        root = tk.Tk()
+        root.withdraw()
+        
+        # If no password is provided, use the current password
         if password is None:
             password = self.password
             
@@ -226,14 +232,13 @@ class PasswordWithPolicy():
         if not valid:
             # Filter out empty suggestions and join the remaining with a comma
             suggestions = filter(None, suggestions)
-            warning_message = ("Your password is considered weak and does not meet the data protection policy. "
-                            "\n\nWhile you can still use this password, we strongly recommend that you "
-                            + ", ".join(suggestions) + " to enhance your security.")
-            messagebox.showwarning("Password Recommendation", warning_message)
-
-        # Hide the root window
-        root = tk.Tk()
-        root.withdraw()  
+            self.warning_message = ("Your password is considered weak and does not meet the data protection policy. "
+                            "\n\nWe strongly recommend that you "
+                            + ", ".join(suggestions) + " to enhance your security.\n\nPlease either create a new password or "
+                            "update your password to meet our policy requirements.")
+            self.set_password_invalid()
+        else:
+            self.set_password_valid()
 
     def delete_password_data(self):
         """ 
@@ -244,3 +249,23 @@ class PasswordWithPolicy():
         self._creation_date = datetime.now()
         self._expiry_date = None
 
+    def set_password_valid(self):
+        """ 
+        Function Name: set_password_valid
+        Function Description: This function sets the password to a valid state.
+        """
+        self.valid_password = True 
+        
+    def set_password_invalid(self):
+        """ 
+        Function Name: set_password_invalid
+        Function Description: This function sets the password to an invalid state.
+        """
+        self.valid_password = False
+
+    def get_password_validation_status(self):
+        """ 
+        Function Name: get_password_validation_status
+        Function Description: This function gets the password state.
+        """
+        return self.valid_password

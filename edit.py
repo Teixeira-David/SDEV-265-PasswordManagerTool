@@ -159,7 +159,7 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
             result = Account.get_all_account_info()
         elif self.tag == "Social_Media":
             result = Account.get_all_social_media_info()
-        elif self.tag == "Web_Services":
+        elif self.tag == "Web_Service":
             result = Account.get_all_web_service_info()
         elif self.tag == "Finance":
             result = Account.get_all_finance_info()

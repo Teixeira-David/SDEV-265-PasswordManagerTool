@@ -125,23 +125,25 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         password = self.password_entry.get()
         
         # Call the function to validate the user input
-        self.validate_and_set_user_info(username, password)
+        return [username, password]
             
     def submit_btn(self):
         """ 
         Function Name: submit_btn
         Function Purpose: This function is executed once the user enters their user name and password
         """
+        # First change the backgrounds to white
+        self.set_bg_to_white(self.entry_widget_list)
+        
         # Declare the Error Message
         error_msg = "Invalid Username or Password. Please try again."
         
         # Get the user input
-        username = self.username_entry.get()
-        password = self.password_entry.get()
+        input_list = self.get_user_input()
 
         try:
             # Attempt to create a User object with the provided credentials
-            usr_obj = User(username=username, user_password=password)
+            usr_obj = User(username=input_list[0], user_password=input_list[1])
             
             # At this point, the input is valid as per our setters and need to check with the db if the values exist
             bln_flag = usr_obj.validate_user_login_cred()
@@ -162,10 +164,13 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
                 return
         
         except ValueError as e:
-            # If setters raise a ValueError, inform the user
-            messagebox.showwarning("Input Error", str(e))
-            # Here, clear the entries or highlight them to indicate an error
-            self.set_bg_to_white(self.entry_widget_list)                     
+            # Handle specific field errors based on message content
+            if 'username' in str(e).lower():
+                self.set_invalid(self.username_entry, str(e))
+            elif 'password' in str(e).lower():
+                self.set_invalid(self.password_entry, str(e))
+            else:
+                messagebox.showwarning("Input Error", str(e))                     
             
     def clear_entry(self):
         """ 
@@ -281,10 +286,8 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         Function Name: create_buttons
         Description: This function creates the buttons for the main UI
         """
-        # Toggle buttons for password reveal
-        pswrd_widgets = [self.first_password_entry, self.second_password_entry]
         # Button(self.ui_frame, text="Show", command=self.toggle_password(pswrd_widgets)).place(relx=0.20, y=180, anchor="center")
-        Button(self.ui_frame, text="Show", command=self.toggle_password(pswrd_widgets)).place(relx=0.8, y=180, anchor="center")
+        Button(self.ui_frame, text="Show", command=self.show_password_btn).place(relx=0.8, y=180, anchor="center")
         
         # Stylize buttons to match the image
         # Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn).place(relx=0.9, y=180, anchor="e")
@@ -312,11 +315,14 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         Function Name: submit_btn
         Function Purpose: This function is executed once the user enters their user name and password
         """
+        # Set all the backgrounds to white
+        self.set_bg_to_white(self.entry_widget_list)
+        
         # Declare the Error Message
         invalid_pswrd_msg = "Passwords do not match. Please try again."
         invalid_user_msg = "Username already exists. Please create a unique username and try again."
         
-        # Get the valid user input
+        # Get the user input
         input_list = self.get_user_input()
 
         # First check if the two user passwords are the same and if not, to return warning the user didn't 
@@ -345,11 +351,11 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         except ValueError as e:
             # Handle specific field errors based on message content
             if 'username' in str(e).lower():
-                self.set_invalid([self.username_entry], str(e))
+                self.set_invalid(self.username_entry, str(e))
             elif 'password' in str(e).lower():
                 self.set_invalid([self.first_password_entry, self.second_password_entry], str(e))
             elif 'email' in str(e).lower():
-                self.set_invalid([self.email_entry], str(e))
+                self.set_invalid(self.email_entry, str(e))
             else:
                 messagebox.showwarning("Input Error", str(e))                   
         
@@ -372,9 +378,11 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         if generated_password:
             self.first_password_entry.delete(0, tk.END)
             self.first_password_entry.insert(0, generated_password)
+            self.first_password_entry.config(show='*')
             self.second_password_entry.delete(0, tk.END)
             self.second_password_entry.insert(0, generated_password)
-                
+            self.second_password_entry.config(show='*')
+                            
     def clear_entry(self):
         """ 
         Function Name: clear_entry
@@ -386,7 +394,18 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         
         # Return focus to first input
         self.entry_widget_list[0].focus()
+    
+    def show_password_btn(self):
+        """ 
+        Function Name: show_password_btn
+        Function Purpose: This function is executed once the user clicks on the 'show' button to reveal the password
+        """       
+        # Set the widget list
+        pswrd_widgets = [self.first_password_entry, self.second_password_entry]
 
+        # Call the method to toggle the password
+        self.toggle_password(pswrd_widgets)
+        
     def generate_btn(self):
         """ 
         Function Name: back_btn

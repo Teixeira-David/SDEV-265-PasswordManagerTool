@@ -224,5 +224,5 @@ class Account():
         self._account_email = ""
         self._category = "" 
         self._notes = ""
-        Account.aaccount_id = []   
+        Account.account_id_list = []   
 
