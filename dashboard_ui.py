@@ -25,8 +25,8 @@ from user_object_class import User
 from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
 from tool_tip import CreateToolTip
-from view_account_ui_dashboard import View_AccountInfo_UiComposable
-
+from view_account_ui_composable import View_All_Accounts_UiComposable, View_SocialMedia_Accounts_UiComposable
+from view_account_ui_composable import View_WebService_Accounts_UiComposable, View_Fiance_Accounts_UiComposable, View_Personal_Accounts_UiComposable
 
 
 #######################################################################################################
@@ -60,6 +60,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         self.paned_window_hidden = True
         self.last_action = None
         self.currently_selected_icon = None
+        self.current_frame = None
         self.is_favorites_clicked = False
         
         # Initialize the sub frames stack
@@ -84,21 +85,50 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         # Create the dynamic column 
         self.create_dynamic_column()
         
-        # # Init the dashboard frames
-        # self.init_dashboard_frames()
+    def switch_composable(self, frame_class, *args, **kwargs):
+        """
+        Destroys the current frame and replaces it with a new one from the given frame class.
+        """
+        if self.current_frame is not None:
+            self.current_frame.destroy_ui_composable()  # Destroy the current composable
+            print(f"Destroyed current frame: {type(self.current_frame).__name__}")
 
+        # Create the new frame and pack it into the same parent
+        self.current_frame = frame_class(self, self.controller, *args, **kwargs)
+        #self.current_frame.pack(fill='both', expand=True)
+        print(f"Loaded new frame: {frame_class.__name__}")
+        
     def init_dashboard_frames(self):
         """
         Function Name: init_dashboard_frames
         Description: This function creates the dashboard frames container stack for the dashboard UI
         """
-        # Add the frames for the dashboard
-        frame_classes = [View_AccountInfo_UiComposable]
-        for FrameClass in frame_classes:
-            frame = FrameClass(parent=self, controller=self.controller)
+        # Define frame classes with their corresponding tags
+        frame_classes = {
+            'account_info': (View_AccountInfo_UiComposable, 'Account_Info'),
+            'social_media': (View_AccountInfo_UiComposable, 'Social_Media'),
+            'web_services': (View_AccountInfo_UiComposable, 'Web_Services'),
+            'finance': (View_AccountInfo_UiComposable, 'Finance'),
+            'personal': (View_AccountInfo_UiComposable, 'Personal'),
+        }
+        # Create and configure the frames for each category
+        self.dashboard_frames = {}
+        for tag, (FrameClass, tag_name) in frame_classes.items():
+            frame = FrameClass(parent=self, controller=self.controller, tag=tag_name)
             frame.pack(fill='both', expand=True)
-            frame.pack_forget()
-            self.dashboard_frames[FrameClass.__name__] = frame
+            frame.pack_forget() # Hide the frame initially
+            self.dashboard_frames[tag] = frame
+            
+        # Spin up the account info frame
+        self.show_dashboard_frame('account_info')
+        
+        # # Add the frames for the dashboard
+        # frame_classes = [View_AccountInfo_UiComposable]
+        # for FrameClass in frame_classes:
+        #     frame = FrameClass(parent=self, controller=self.controller)
+        #     frame.pack(fill='both', expand=True)
+        #     frame.pack_forget()
+        #     self.dashboard_frames[FrameClass.__name__] = frame
         
     def file_menu_composable(self):
         """
@@ -242,7 +272,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Create a canvas for the icon
         button_canvas = tk.Canvas(self.sidebar if sidebar == 'primary' else self.dynamic_column, 
-                                  width=50, height=50, bg='#dddddd', highlightthickness=0)
+                                width=50, height=50, bg='#dddddd', highlightthickness=0)
         # Pack at the bottom if place_bottom is True
         if place_bottom:
             button_canvas.pack(side='bottom', pady=10)
@@ -278,7 +308,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
                 action()
             elif isinstance(action, str):
                 # Delegate frame management to the controller
-                self.controller.show_frame(action)
+                self.show_dashboard_frame(action)
 
         self.last_action = action       
         
@@ -295,7 +325,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
             # If shown, hide the paned window
             self.paned_window.place_forget()
             self.paned_window_hidden = True
-
+            
     def show_dashboard_frame(self, frame_name):
         """
         Function Name: show_dashboard_frame
@@ -305,7 +335,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         if frame:
             for f in self.dashboard_frames.values():
                 f.pack_forget()  # Hide all frames
-            frame.pack(fill='both', expand=True)  # Make the frame visible using pack
+            #frame.pack(fill='both', expand=True)  # Make the frame visible using pack
         else:
             print(f"Frame {frame_name} not found")
             
@@ -325,6 +355,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Get the bool status of the favorites btn clicked
         if self.is_favorites_clicked is False:
+            # Debugging
             print("load_favorites_composable triggered")   
             self.is_favorites_clicked = True
             self.sub_sidebar_composable()
@@ -334,6 +365,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: load_settings_composable
         Function Purpose: This function executes when the user clicks on 'settings' button to display the UI composable
         """
+        # Debugging
         print("load_settings_composable triggered")   
         
     def load_all_accounts_composable(self):
@@ -341,40 +373,51 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: load_all_accounts_composable
         Function Purpose: This function executes when the user clicks on 'All Accounts' button to display the UI composable
         """
+        # Debugging
         print("load_all_accounts_composable triggered")
-        # Call the accounts info composable
-        # Init the dashboard frames
-        self.init_dashboard_frames()
-        # self.show_dashboard_frame("View_AccountInfo_UiComposable")
+        # Show the 'social media' composable
+        self.switch_composable(View_All_Accounts_UiComposable)
 
     def load_social_media_composable(self):
         """ 
         Function Name: load_social_media_composable
         Function Purpose: This function executes when the user clicks on 'Social Media' button to display the UI composable
         """
+        # Debugging
         print("load_social_media_composable triggered")
+        # Show the 'social media' composable
+        self.switch_composable(View_SocialMedia_Accounts_UiComposable)
         
     def load_web_services_composable(self):
         """ 
         Function Name: load_web_services_composable
         Function Purpose: This function executes when the user clicks on 'Web Services' button to display the UI composable
         """
+        # Debugging
         print("load_web_services_composable triggered")
+        # Show the 'social media' composable
+        self.switch_composable(View_WebService_Accounts_UiComposable)
         
     def load_finance_composable(self):
         """ 
         Function Name: load_finance_composable
         Function Purpose: This function executes when the user clicks on 'Finance' button to display the UI composable
         """
+        # Debugging
         print("load_finance_composable triggered")
+        # Show the 'social media' composable
+        self.switch_composable(View_Fiance_Accounts_UiComposable)
         
     def load_personal_composable(self):
         """ 
         Function Name: load_personal_composable
         Function Purpose: This function executes when the user clicks on 'Personal' button to display the UI composable
         """
+        # Debugging
         print("load_personal_composable triggered")               
-            
+        # Show the 'social media' composable
+        self.switch_composable(View_Personal_Accounts_UiComposable)
+          
     def clear_entry(self):
         """ 
         Function Name: clear_entry

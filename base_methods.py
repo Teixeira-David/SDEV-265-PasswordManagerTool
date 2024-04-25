@@ -251,7 +251,6 @@ class Base_Ui_Methods():
         else:
             print(f"No frame with name {frame_name} found.")
             
-
     def hide_frame(self, frame_name):
         """
         Function Name: hide_frame

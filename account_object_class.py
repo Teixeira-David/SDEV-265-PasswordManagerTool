@@ -145,13 +145,70 @@ class Account():
         Function Name: get_all_account_info
         Function Description: This function gets all the account records from the database
         """   
-        # Set the table and column names
+        # Set the view query
         view = 'vAccountsInfo'
-        col_name_list = ['*']
         
         # Execute the query to get all the records from the database
+        return Account.fetch_all_db_records(view)
+
+    @staticmethod
+    def get_all_social_media_info():
+        """ 
+        Function Name: get_all_social_media_info
+        Function Description: This function gets all the social media account records from the database
+        """   
+        # Set the view query
+        view = 'vAccountsInfo_Social_Media'
+        
+        # Execute the query to get all the records from the database
+        return Account.fetch_all_db_records(view)
+    
+    @staticmethod
+    def get_all_web_service_info():
+        """ 
+        Function Name: get_all_web_service_info
+        Function Description: This function gets all the web service account records from the database
+        """   
+        # Set the view query
+        view = 'vAccountsInfo_Web_Services'
+        
+        # Execute the query to get all the records from the database
+        return Account.fetch_all_db_records(view)
+    
+    @staticmethod
+    def get_all_finance_info():
+        """ 
+        Function Name: get_all_finance_info
+        Function Description: This function gets all the finance account records from the database
+        """   
+        # Set the view query
+        view = 'vAccountsInfo_Finance'
+        
+        # Execute the query to get all the records from the database
+        return Account.fetch_all_db_records(view)
+
+    @staticmethod
+    def get_all_personal_info():
+        """ 
+        Function Name: get_all_personal_info
+        Function Description: This function gets all the personal account records from the database
+        """   
+        # Set the view query
+        view = 'vAccountsInfo_Personal'
+        
+        # Execute the query to get all the records from the database
+        return Account.fetch_all_db_records(view)
+
+    @staticmethod
+    def fetch_all_db_records(sql_view, col_name_list='*'):
+        """ 
+        Function Name: fetch_all_db_records
+        Function Description: This function gets all the records from the database and returns the 
+        results of the query.
+        """   
+        # Execute the query to get all the records from the database
         db_qh = Database_Query_Handler()
-        result = db_qh.get_all_db_record(col_name_list, view)
+        result = db_qh.get_all_db_record(col_name_list, sql_view)
 
         return result
     
