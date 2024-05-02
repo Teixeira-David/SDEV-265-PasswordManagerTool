@@ -20,7 +20,7 @@ import tkinter as tk
 from datetime import date, datetime, timedelta
 
 # Import project modules
-from database_script import Database_Query_Handler
+from database_script import Database_Query_Handler, Database_Management_Handler
 from user_object_class import User
 from password_object_class import PasswordWithPolicy
 
@@ -329,6 +329,42 @@ class Account(User):
         params = (table_name, table_col_list, table_values_list, prim_id, key_id)
         # Call insert_or_update_values with the prepared parameters
         self.insert_or_update_values(params)
+
+    def delete_account(self, data):
+        """ 
+        Function Name: delete_account
+        Function Description: This function deletes an account from the database
+        """   
+        # Define parameters for the delete method
+        table_name = 'TAccounts'
+        prim_id = 'intAccountID'
+        
+        # Get all the records
+        all_records = Account.get_all_account_info()
+
+        # Prepare list of account IDs to delete
+        ids_to_delete = []
+
+        # Encrypt the passwords in data for comparison
+        key = PasswordWithPolicy.get_key()
+
+        # Check each record against all items in data
+        for i, record in enumerate(all_records):
+            # Decrypt the password to compare
+            record = list(record)
+            record[3] = PasswordWithPolicy.decrypt_password(record[3], key=key)
+            # Check if the record matches the data (assuming the ID is the first element in record)
+            for d in data:
+                d = list(d)
+                if d == record:  # Skip the ID field for comparison
+                    ids_to_delete.append(i + 1)
+
+        if ids_to_delete:
+            # Call delete with the prepared parameters
+            for id in ids_to_delete:
+                params = (table_name, prim_id, id)
+                db_mh = Database_Management_Handler()
+                db_mh.delete_values(params)
         
     def delete_account_data(self):
         """ 

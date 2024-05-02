@@ -56,6 +56,7 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         self.current_frame = None
         self.icon_buttons = [] 
         self.controller.shared_data = {'selected_data': None}
+        self.selected_data = []
         
     def create_ui_frame(self):
         """
@@ -278,30 +279,10 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         for item_id in selected_items:
             item_data = self.tree.item(item_id, 'values')  
             all_selected_data.append(item_data)
-            print("Data for item {}: {}".format(item_id, item_data))  # Debug to view the data selected
+            #print("Data for item {}: {}".format(item_id, item_data))  # Debug to view the data selected
 
         return all_selected_data
 
-    def edit_selected_items(self):
-        """
-        Function Name: edit_selected_items
-        Description: Called when the edit button is clicked.
-        """
-        selected_items = self.selected_items
-        # Add your logic to edit the selected items
-        print("Editing items:", selected_items)
-
-    def delete_selected_items(self):
-        """
-        Function Name: delete_selected_items
-        Description: Called when the delete button is clicked.
-        """
-        selected_items = self.selected_items
-        # Add your logic to delete the selected items
-        for item in selected_items:
-            self.tree.delete(item)
-        print("Deleted items:", selected_items)
-        
     def destroy_all_composable(self):
         """ 
         Function Name: destroy_all_composable
@@ -344,7 +325,16 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         # Call the composable
         self.destroy_all_composable()
         self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud', data=data)
-        
+
+    def convert_selected_data(self, data):
+        """ 
+        Function Name: convert_selected_data
+        Function Purpose: This function is converts the data passed to only represent the user name and app name
+        """      
+        if data is not None and len(data) > 0:
+            for d in data:
+                self.selected_data.append(d[0] + " - " + d[1])
+                
     def delete_account_composable(self):
         """ 
         Function Name: delete_account_composable
@@ -353,12 +343,30 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         print("delete_account_composable triggered") # Debugging purposes
 
-        # Get the data from the selected list
+        # Retrieve the data from the selected list
         data = self.get_selected_items_data()
-        print(data) # Debugging purposes
+        print(data)  # Debugging purposes
         
-        # Call the composable
-            
+        # Convert the data for processing
+        self.convert_selected_data(data)
+        
+        # Create a formatted string of account names for the confirmation message
+        account_names = ", \n".join(self.selected_data)
+        account_list_text = f"{account_names}"
+
+        # Display an explicit and informative warning message to the user
+        confirmation_message = (
+            f"WARNING: You are about to permanently delete the following account(s): \n\n{account_list_text}\n\n"
+            "This action CANNOT be undone. All associated data will be irretrievably lost. Please confirm that you wish to "
+            "proceed with deleting these accounts. It is recommended to backup any important data before proceeding."
+        )
+        
+        if messagebox.askokcancel("Confirm Permanent Delete", confirmation_message):
+            # If the user confirms, call the delete method
+            Account.delete_account(Account, data)
+            # Refresh the treeview or the display to show the updated state
+            self.get_db_data()
+        
     def destroy_base_composable(self):
         """ 
         Function Name: destroy_base_composable

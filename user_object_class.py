@@ -25,7 +25,6 @@ from password_object_class import PasswordWithPolicy
 from database_script import Database_Query_Handler, Database_Management_Handler
 
 
-
 #######################################################################################################
 # User Class
 #######################################################################################################         

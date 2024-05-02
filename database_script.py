@@ -1022,19 +1022,6 @@ class Database_Management_Handler(Database_Connection_Handler):
             # Append the primary key value at the end of values list for the WHERE clause
             values_to_update = table_values_list + [key_id]
             
-            # # Prepare values for the parameterized query
-            # values_to_update = list(table_values_list) 
-            # values_to_update.append(key_id)
-
-        #     # Execute the SQL query
-        #     cursor = self.conn.cursor()
-        #     cursor.execute(sql_update_statement, values_to_update)
-        #     cursor.close()
-
-        # except sqlite3.Error as e:
-        #     print(f"Error executing SQL statement: {e}")
-        #     self.conn.rollback()      
-
             # Check if the connection is available
             if not self.conn:
                 try: 
@@ -1056,7 +1043,6 @@ class Database_Management_Handler(Database_Connection_Handler):
         finally:
             if cursor:
                 cursor.close()  # Ensure the cursor is closed after operation
-
 
     def db_exe_add_values(self, params):
         """
@@ -1108,26 +1094,40 @@ class Database_Management_Handler(Database_Connection_Handler):
             print(f"Error executing SQL statement: {e}")   
             self.conn.rollback()
             
-    def remove_attribute_query(self, strTable, intPrimID, intKeyID):
+    def delete_values(self, params):
         """ 
-        Function Name: remove_attribute_query
+        Function Name: delete_values
         Function Description: This function updates the database by removing objects inside the db table
         """    
+        table_name = params[0]
+        prim_id = params[1]
+        key_id = params[2]
+        
         try:
-            # First check if connected to the database   
-            if not self.conn:
-                raise Exception("Database is not connected.")
-                                    
-            # Create the SQL delete query
-            sql_query = f"DELETE FROM {strTable} WHERE {intPrimID} = {intKeyID}"
+            # Create the SQL delete statement
+            sql_delete_statement = f"DELETE FROM {table_name} WHERE {prim_id} = ?"
 
-            # Execute the SQL query   
-            self.db_exe_statement(self, sql_query)
-            self.conn.commit()
+            # Check if the connection is available
+            if not self.conn:
+                try:
+                    self.db_connect()
+                except sqlite3.Error as e:
+                    print(f"Error connecting to the database: {e}")
+                    return
+
+            # Execute the SQL query
+            cursor = self.conn.cursor()
+            cursor.execute(sql_delete_statement, (key_id,))  # Ensure the key_id is passed as a tuple
+            self.conn.commit()  # Commit the changes to make the delete permanent
 
         except sqlite3.Error as e:
-            print(f"Error executing SQL statement: {e}")
-            self.conn.rollback()   
+            print(f"Error executing SQL delete statement: {e}")
+            if self.conn:
+                self.conn.rollback()  # Rollback any changes if an error occurs
+
+        finally:
+            if cursor:
+                cursor.close()  # Ensure the cursor is closed after operation
             
     #######################################################################################################
     # Database Tables
