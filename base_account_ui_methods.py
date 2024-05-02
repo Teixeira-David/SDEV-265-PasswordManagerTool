@@ -24,6 +24,7 @@ from PIL import Image, ImageTk
 # Import project modules
 from base_methods import Base_Ui_Methods
 from account_object_class import Account
+from password_object_class import PasswordWithPolicy
 from tool_tip import CreateToolTip
 from crud_ui_composable import Edit_Accounts_UiComposable, Add_Accounts_UiComposable
 
@@ -54,6 +55,7 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         self.last_action = None 
         self.current_frame = None
         self.icon_buttons = [] 
+        self.controller.shared_data = {'selected_data': None}
         
     def create_ui_frame(self):
         """
@@ -138,20 +140,20 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function returns the column names based on the tag.
         """
         # Base column setup
-        base_columns = ['application_name', 'user_name', 'email', 'password', 'category', 'notes']
+        base_columns = ['application_name', 'user_name', 'email', 'password', 'last_update', 'category', 'notes']
         # Base header columns
-        base_header = ['Application Name', 'User Name', 'Email', 'Password', 'Category', 'Notes']
+        base_header = ['Application Name', 'User Name', 'Email', 'Password', 'Last Update', 'Category', 'Notes']
         
         # Define different column setups for different tags
         if tag == "Account_Info":
             # Pop the 'notes' column
-            base_columns.pop(5)
-            base_header.pop(5)
+            base_columns.pop(6)
+            base_header.pop(6)
             return (base_header, base_columns)
         else:
             # Pop the 'category' column
-            base_columns.pop(4)
-            base_header.pop(4)
+            base_columns.pop(5)
+            base_header.pop(5)
             return (base_header, base_columns)
         
     def get_db_data(self):
@@ -159,6 +161,9 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: get_db_data
         Description: This function will fetch data from the database and populate the treeview.
         """
+        # Get the key for decryption
+        key = PasswordWithPolicy.get_key()
+        
         # Get the data from the db
         if self.tag == "Account_Info":
             result = Account.get_all_account_info()
@@ -182,8 +187,12 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
 
             # Add new data to the treeview
             for index, row in enumerate(result):
+                # Change the row tuple to a list
+                row = list(row)
                 # Choose the tag based on the row index
                 tag = 'evenrow' if index % 2 == 0 else 'oddrow'
+                # Decrypt the password stored in the database
+                row[3] = PasswordWithPolicy.decrypt_password(row[3], key=key)
                 self.tree.insert("", "end", values=row, tags=(tag,))
         else:
             pass
@@ -328,6 +337,9 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         # Get the data from the selected list
         data = self.get_selected_items_data()
         print(data) # Debugging purposes
+        
+        # Get the user selected data before opening the custom password generator
+        self.controller.shared_data = {'selected_data': data}
         
         # Call the composable
         self.destroy_all_composable()

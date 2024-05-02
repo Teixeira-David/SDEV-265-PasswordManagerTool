@@ -302,14 +302,16 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
             from crud_ui_composable import Add_Accounts_UiComposable 
 
             # Assuming 'Add_Accounts_UiComposable' was initialized and managed by the controller
-            self.destroy_child_frame()
+            #self.destroy_child_frame()
+            self.hide_child_frame()
             self.switch_composable(Add_Accounts_UiComposable, frame_type='crud')
         elif self.tag == "Edit":
             # Import the class at the top of the file if it's not already imported
             from crud_ui_composable import Edit_Accounts_UiComposable 
             
             # Assuming 'Edit_Accounts_UiComposable' was initialized and managed by the controller
-            self.destroy_child_frame()
+            #self.destroy_child_frame()
+            self.hide_child_frame()
             self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud')
         else:
             self.controller.show_grid_frame("AddNewUser_UiComposable")  
@@ -321,8 +323,8 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
         """  
         # Hide the current frame    
-        #self.hide_child_frame()
-        self.destroy_child_frame()
+        self.hide_child_frame()
+        #self.destroy_child_frame()
         
         # Switch back to the previous frame
         self.switch_frame_composable()

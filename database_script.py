@@ -26,6 +26,8 @@ import sys
 import tempfile
 import pyzipper
 
+from password_object_class import PasswordWithPolicy
+
 # Import Project Modules
 
 
@@ -1017,19 +1019,45 @@ class Database_Management_Handler(Database_Connection_Handler):
             set_part = ', '.join(f"{col} = ?" for col in table_col_list)
             sql_update_statement = f"UPDATE {table_name} SET {set_part} WHERE {prim_id} = ?"
 
-            # Prepare values for the parameterized query
-            values_to_update = list(table_values_list) 
-            values_to_update.append(key_id)
+            # Append the primary key value at the end of values list for the WHERE clause
+            values_to_update = table_values_list + [key_id]
+            
+            # # Prepare values for the parameterized query
+            # values_to_update = list(table_values_list) 
+            # values_to_update.append(key_id)
 
+        #     # Execute the SQL query
+        #     cursor = self.conn.cursor()
+        #     cursor.execute(sql_update_statement, values_to_update)
+        #     cursor.close()
+
+        # except sqlite3.Error as e:
+        #     print(f"Error executing SQL statement: {e}")
+        #     self.conn.rollback()      
+
+            # Check if the connection is available
+            if not self.conn:
+                try: 
+                    self.db_connect()
+                except sqlite3.Error as e:
+                    print(f"Error connecting to the database: {e}")
+                    return
+                
             # Execute the SQL query
             cursor = self.conn.cursor()
             cursor.execute(sql_update_statement, values_to_update)
-            cursor.close()
+            self.conn.commit()  # Commit the changes to make the update permanent
 
         except sqlite3.Error as e:
-            print(f"Error executing SQL statement: {e}")
-            self.conn.rollback()      
-            
+            print(f"Error executing SQL update statement: {e}")
+            if self.conn:
+                self.conn.rollback()  # Rollback any changes if an error occurs
+
+        finally:
+            if cursor:
+                cursor.close()  # Ensure the cursor is closed after operation
+
+
     def db_exe_add_values(self, params):
         """
         Function Name: db_exe_add_values
@@ -1378,7 +1406,6 @@ class Database_Management_Handler(Database_Connection_Handler):
                     ,NEW.intUserID
                     ,NEW.strAppName
                     ,NEW.strAppUserName
-                    ,NEW.strAccountName
                     ,NEW.strAppPassword
                     ,NEW.strAppEmail
                     ,NEW.strCategory
@@ -1815,7 +1842,7 @@ class Database_Management_Handler(Database_Connection_Handler):
                     OLD.intBackupID
                     ,OLD.intUserID
                     ,OLD.dtmBackupDate
-                    ,NEW.strFilePath
+                    ,OLD.strFilePath
                     ,COALESCE((SELECT strCurrentUser FROM TSessionContext WHERE intSessionID = 1), 'Unknown') -- Provide a default value if subquery fails
                     ,DATETIME('now')
                     ,'D' -- Delete
@@ -1952,7 +1979,6 @@ class Database_Management_Handler(Database_Connection_Handler):
         table_values_list = [
             'cipher_admin',
             '$2b$12$r9zWBT3IYJZoUTUaFIgv2edgtcTtnn53jaEiDecBp06TyVb9WZbNe',
-            #'03447b830d36c4def996d565bef520e58286867d0d19e20d40b87701d3fa221ea03bd091fc3161ed2d85ac7853534ab9219bbe1af1eefbb662670c0c57937308',
             'admin@ciphershield.com',
             todays_date,
             'Test Data Insertion',
@@ -1987,13 +2013,30 @@ class Database_Management_Handler(Database_Connection_Handler):
             ]
         prim_id = 'intAccountID'
         
+        # Test data passwords
+        pswrd_list_plain_text = [
+            'fbpass456', 
+            'twitterpass789', 
+            'googlepass789', 
+            'pncpass789', 
+            'fitbitpass789'
+        ]
+        
+        # Get the key for encrypting the password
+        key = PasswordWithPolicy.get_key()
+        new_pswrd_list = []
+        for i in pswrd_list_plain_text:
+            # Encrypt the password
+            pswrd = PasswordWithPolicy.encrypt_password(i, key)
+            new_pswrd_list.append(pswrd)
+            
         # Define data to be inserted
         table_values_list = [
-            [1, 'Facebook', 'fbuser123', 'fbpass456', 'admin@ciphershield.com', 'Social_Media', '', todays_date, 'Test Data Insertion'],
-            [1, 'Twitter', 'twitteruser123', 'twitterpass789', 'admin@ciphershield.com', 'Social_Media', '', todays_date, 'Test Data Insertion'],
-            [1, 'Google', 'googleuser123', 'googlepass789', 'admin@ciphershield.com', 'Web_Services', '', todays_date, 'Test Data Insertion'],
-            [1, 'PNC Bank', 'pncuser123', 'pncpass789', 'admin@ciphershield.com', 'Finance', '', todays_date, 'Test Data Insertion'],
-            [1, 'Fitness Tracking App', 'fitbituser123', 'fitbitpass789', 'admin@ciphershield.com', 'Personal', '', todays_date, 'Test Data Insertion']
+            [1, 'Facebook', 'fbuser123', new_pswrd_list[0], 'admin@ciphershield.com', 'Social_Media', '', todays_date, 'Test Data Insertion'],
+            [1, 'Twitter', 'twitteruser123', new_pswrd_list[1], 'admin@ciphershield.com', 'Social_Media', '', todays_date, 'Test Data Insertion'],
+            [1, 'Google', 'googleuser123', new_pswrd_list[2], 'admin@ciphershield.com', 'Web_Services', '', todays_date, 'Test Data Insertion'],
+            [1, 'PNC Bank', 'pncuser123', new_pswrd_list[3], 'admin@ciphershield.com', 'Finance', '', todays_date, 'Test Data Insertion'],
+            [1, 'Fitness Tracking App', 'fitbituser123', new_pswrd_list[4], 'admin@ciphershield.com', 'Personal', '', todays_date, 'Test Data Insertion']
         ]
         
         # Insert each set of data into the table
@@ -2129,7 +2172,10 @@ class Database_Query_Handler(Database_Connection_Handler):
             
         try:
             cursor = self.conn.cursor()
-            cursor.execute(sql, values)
+            if values:
+                cursor.execute(sql, values)
+            else:
+                cursor.execute(sql)
             result = cursor.fetchone()
             cursor.close()
             return result[0] if result else None

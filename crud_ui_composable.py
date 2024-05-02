@@ -36,7 +36,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
     Class Name: Add_Edit_Account_UiComposable
     Class Description: This class is the to add a new user to the application.
     """
-    def __init__(self, parent, controller, tag, data, frame, *args, **kwargs):
+    stored_selected_data = []
+    selected_index = 0
+    
+    def __init__(self, parent, controller, tag, data=None, frame=None, *args, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
@@ -46,7 +49,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         self.controller = controller 
         self.parent = parent
         self.tag = tag
-        self.data = data
+        self.data = data if data is not None else []
         self.frame = frame 
         self.selected_data = []
 
@@ -216,12 +219,15 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Set the entry fields to be disabled if the tag is 'Edit'
         if self.tag == "Edit":
-            for entry in self.entry_widget_list:
-                entry.config(state='disabled')
-            # Disable the 'Generate' button and the 'Items Selected' drop-down
-            self.show_btn.config(state='disabled')
-            self.gen_btn.config(state='disabled')
-            self.items_selected_drop.config(state='readonly')
+            if self.controller.shared_data.get('generated_password'):
+                self.populate_fields()
+            else:
+                for entry in self.entry_widget_list:
+                    entry.config(state='disabled')
+                # Disable the 'Generate' button and the 'Items Selected' drop-down
+                self.show_btn.config(state='disabled')
+                self.gen_btn.config(state='disabled')
+                self.items_selected_drop.config(state='readonly')
         else:
             # Set the placeholder text for the entry fields
             placeholders = {
@@ -297,10 +303,12 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         # Check for item selection if the tag is not 'Add'
         if self.tag != "Add":
             if not self.items_selected_drop.get().strip():
-                errors['items_selected_drop'] = "Please select an item from the list"
-        
-        return input_list, errors
+                all_other_fields_filled = all(entry.get().strip() for entry in self.entry_widget_list[:-1] if entry != self.items_selected_drop)
+                if not all_other_fields_filled:
+                    errors['items_selected_drop'] = "Please select an item from the list"
 
+        return input_list, errors
+    
     def submit_btn(self):
         """ 
         Function Name: submit_btn
@@ -319,11 +327,21 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         # Set the index based off the tag
         if self.tag == "Add":
             input_list.pop(0)
+            category_idx = 0
+            account_name_idx = 1
+            username_idx = 2
             first_pswrd_idx = 3
             second_pswrd_idx = 4
+            email_idx = 5
+            note_idx = 6
         else:
+            category_idx = 1
+            account_name_idx = 2
+            username_idx = 3
             first_pswrd_idx = 4
             second_pswrd_idx = 5
+            email_idx = 6
+            note_idx = 7
             
         # First check if the two user passwords are the same and if not, to return warning the user didn't 
         # enter the same password
@@ -338,6 +356,14 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             "Adding this account will allow you to manage its details through this tool. \n\n"
             "Do you want to proceed?"
         )
+        edit_message = (
+            f"You are about to edit an existing account named '{input_list[3]}' under the category '{input_list[1]}'.\n\n"
+            "Editing this account will update its information within this tool. It is recommended to carefully review "
+            "and confirm all changes, especially if they affect crucial details like username or password.\n\n"
+            "Proceeding with this update can help ensure that the account details remain accurate and relevant to the "
+            "category it's associated with. \n\n"
+            "Do you want to proceed with these changes?"
+            )
 
         # Debug, make sure to comment this out after testing
         User.user_id = 1
@@ -345,23 +371,33 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         try:
             # Attempt to create a Account object with the provided credentials
             acc_obj = Account(
+                account_id=Add_Edit_Account_UiComposable.selected_index + 1,
                 user_id=User.user_id,
-                account_name=input_list[1], 
-                account_username=input_list[2], 
-                account_password=input_list[3], 
-                account_email=input_list[5],
-                category=input_list[0],
-                notes=input_list[6]
+                account_name=input_list[account_name_idx], 
+                account_username=input_list[username_idx], 
+                account_password=input_list[first_pswrd_idx], 
+                account_email=input_list[email_idx],
+                category=input_list[category_idx],
+                notes=input_list[note_idx]
             )
             
-            # Make sure to get the user acceptance to add the new account
-            response = messagebox.askyesno("Confirm New Account", confirmation_message)
-            if response:
-                acc_obj.add_new_account()
-                self.clear_entry_widget(self.entry_widget_list)
-                acc_obj.delete_account_data()
-                self.back_btn()
-            
+            if self.tag == "Add":
+                # Make sure to get the user acceptance to add the new account
+                response = messagebox.askyesno("Confirm New Account", confirmation_message)
+                if response:
+                    acc_obj.add_new_account()
+                    self.clear_entry_widget(self.entry_widget_list)
+                    acc_obj.delete_account_data()
+                    self.back_btn()
+            else:
+                # Make sure to get the user acceptance to edit the selected account
+                response = messagebox.askyesno("Confirm Edit Account", edit_message)
+                if response:
+                    acc_obj.edit_account()
+                    self.clear_entry_widget(self.entry_widget_list)
+                    acc_obj.delete_account_data()
+                    self.back_btn()
+                    
         except ValueError as e:
             # Handle specific field errors based on message content
             if 'category' in str(e).lower():
@@ -409,8 +445,13 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: convert_data
         Function Purpose: This function is converts the data passed to only represent the user name and app name
         """      
-        for data in self.data:
-            self.selected_data.append(data[0] + " - " + data[1])
+        if self.data is not None and len(self.data) > 0:
+            for data in self.data:
+                self.selected_data.append(data[0] + " - " + data[1])
+        else:
+            self.data = Add_Edit_Account_UiComposable.stored_selected_data
+            for data in self.data:
+                self.selected_data.append(data[0] + " - " + data[1])
 
     def populate_fields(self):
         """
@@ -418,26 +459,46 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: Populate the entry fields based on the selected item in the dropdown.
         """
         # Get the index of the selected item
-        selected_index = self.items_selected_drop.current()
-        if selected_index >= 0:
-            # Get the data tuple for the selected index
-            selected_item = self.data[selected_index]
+        if self.items_selected_drop.get() is not None and len(self.items_selected_drop.get()) > 0:
+            Add_Edit_Account_UiComposable.selected_index = self.items_selected_drop.current()
+        else: 
+            self.convert_data()
 
+        # Check if an item is selected
+        if Add_Edit_Account_UiComposable.selected_index >= 0:
+            # Get the data tuple for the selected index
+            selected_item = self.data[Add_Edit_Account_UiComposable.selected_index]
+
+            # Set the config state to normal
+            for entry in self.entry_widget_list:
+                entry.config(state='normal')
+                
+            # Set the buttons to normal
+            self.show_btn.config(state='normal')
+            self.gen_btn.config(state='normal')
+            
             # Clear existing entries
             self.appname_entry.delete(0, END)
             self.username_entry.delete(0, END)
             self.email_entry.delete(0, END)
             self.hint_entry.delete("1.0", END)
             
-            # Assuming the data tuple structure: (app_name, username, password, email, hint)
-            self.appname_entry.insert(0, selected_item[0])
-            self.username_entry.insert(0, selected_item[1])
-            # # Decrypt the password before setting it in the entry
-            # decrypted_password = self.decrypt_password(selected_item[2], 'your_encryption_key_here')
-            # self.first_password_entry.insert(0, decrypted_password)
-            # self.second_password_entry.insert(0, decrypted_password)
-            self.email_entry.insert(0, selected_item[3])
-            self.hint_entry.insert("1.0", selected_item[4])
+            # Insert the data into the fields
+            if self.controller.shared_data.get('generated_password'):
+                self.load_generated_password()
+                self.appname_entry.insert(0, selected_item[0])
+                self.username_entry.insert(0, selected_item[1])
+                self.email_entry.insert(0, selected_item[2])
+            else:
+                self.appname_entry.insert(0, selected_item[0])
+                self.username_entry.insert(0, selected_item[1])
+                self.first_password_entry.insert(0, selected_item[3])
+                self.second_password_entry.insert(0, selected_item[3])
+                self.email_entry.insert(0, selected_item[2])
+            
+            # Replace the underscore with a space
+            category = selected_item[5].replace("_", " ")
+            self.category_drop.set(category)
 
         else:
             messagebox.showerror("Selection Error", "No item selected or available for editing.")
@@ -452,7 +513,11 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         self.set_bg_to_white(self.entry_widget_list)
         
         # Return focus to first input
-        self.entry_widget_list[0].focus()
+        if self.tag == "Add":
+            self.category_drop.focus()
+        else:
+            self.config_entry_fields()
+            self.items_selected_drop.focus()
     
     def show_password_btn(self):
         """ 
@@ -474,6 +539,9 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         # Hide the current frame    
         #self.hide_child_frame()
         self.destroy_child_frame()
+        
+        Add_Edit_Account_UiComposable.stored_selected_data = self.controller.shared_data.get('selected_data')
+        print(Add_Edit_Account_UiComposable.stored_selected_data)
         
         # Load the generate custom frame Ui
         self.cust_pswrd_gen = CustomPasswordGen_UiComposable(self.parent, self.controller, tag=self.tag, crud_frames=self.frame)

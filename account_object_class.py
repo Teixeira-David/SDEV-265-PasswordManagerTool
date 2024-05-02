@@ -223,12 +223,35 @@ class Account(User):
         result = db_qh.get_all_db_record(col_name_list, sql_view)
 
         return result
-    
+
+    @staticmethod
+    def get_max_account_id():
+        """ 
+        Function Name: get_max_account_id
+        Function Description: This function gets the max account id from the database
+        """   
+        # Set the table and column names
+        table = 'TAccounts'
+        id_col = 'intAccountID'
+        
+        # SQL to fetch id for the given username
+        sql = f"SELECT MAX({id_col}) FROM {table}"
+
+        # Execute the query to get the max id
+        db_qh = Database_Query_Handler()
+        max_id = db_qh.get_target_db_record(sql)
+
+        # Result should contain the max id or None if no records exist
+        return max_id if max_id is not None else 0
+            
     def add_new_account(self):
         """ 
         Function Name: add_new_account
         Function Description: This function adds a new account to the database
         """   
+        # Get the key for encrypting the password
+        key = PasswordWithPolicy.get_key()
+        
         # Get today's date in YYYY-MM-DD format
         todays_date = date.today().isoformat()
         
@@ -250,7 +273,7 @@ class Account(User):
             self.user_id,
             self.account_name,
             self.username,
-            PasswordWithPolicy.hash_password(self.user_password),
+            PasswordWithPolicy.encrypt_password(self.user_password, key=key),
             self.user_email,
             self.category,
             self.notes,
@@ -261,6 +284,49 @@ class Account(User):
         
         # Package parameters
         params = (table_name, table_col_list, table_values_list, prim_id)
+        # Call insert_or_update_values with the prepared parameters
+        self.insert_or_update_values(params)
+        
+    def edit_account(self):
+        """ 
+        Function Name: edit_account
+        Function Description: This function edits an old account to the database
+        """   
+        # Get the key for encrypting the password
+        key = PasswordWithPolicy.get_key()
+        
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TAccounts'
+        table_col_list = [ 
+            'intUserID', 
+            'strAppName', 
+            'strAppUserName', 
+            'strAppPassword', 
+            'strAppEmail', 
+            'strCategory', 
+            'strNotes',
+            'dtmLastUpdate',
+            'strModifiedReason'
+            ]
+        table_values_list = [
+            self.user_id,
+            self.account_name,
+            self.username,
+            PasswordWithPolicy.encrypt_password(self.user_password, key=key),
+            self.user_email,
+            self.category,
+            self.notes,
+            todays_date,
+            'Edit Account Registration',
+        ]
+        prim_id = 'intAccountID'
+        key_id = self.account_id
+        
+        # Package parameters
+        params = (table_name, table_col_list, table_values_list, prim_id, key_id)
         # Call insert_or_update_values with the prepared parameters
         self.insert_or_update_values(params)
         

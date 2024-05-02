@@ -12,9 +12,9 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
+import configparser
 import bcrypt
-import hashlib
-import re
+from cryptography.fernet import Fernet
 from tkinter import *
 from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
@@ -99,6 +99,58 @@ class PasswordWithPolicy():
 
         # Use bcrypt to check if the hashed password matches the plain password
         return bcrypt.checkpw(plain_password, hashed_password)
+    
+    @staticmethod
+    def generate_key():
+        """
+        Function Name: generate_key
+        Purpose: Generates a new Fernet key.
+        """
+        return Fernet.generate_key().decode()
+
+    @staticmethod
+    def save_key_to_file(key):
+        """
+        Function Name: save_key_to_file
+        Purpose: Saves the generated key to a configuration file.
+        """
+        config = configparser.ConfigParser()
+        config['encryption'] = {'KEY': key}
+        with open('keys.ini', 'w') as configfile:
+            config.write(configfile)
+            
+    @staticmethod
+    def get_key():
+        """
+        Function Name: get_key
+        Purpose: Gets the Fernet key from the keys.ini file
+        """
+        config = configparser.ConfigParser()
+        config.read('keys.ini')
+        key = config['encryption']['KEY']
+        return key
+    
+    @staticmethod
+    def encrypt_password(password, key):
+        """
+        Function Name: encrypt_password
+        Purpose: Encrypts a password using the provided key.
+        """
+        f = Fernet(key)
+        encoded_password = password.encode()
+        encrypted_password = f.encrypt(encoded_password)
+        return encrypted_password.decode()
+
+    @staticmethod
+    def decrypt_password(encrypted_password, key):
+        """
+        Function Name: decrypt_password
+        Purpose: Decrypts a password using the provided key.
+        """
+        f = Fernet(key)
+        encrypted_password_bytes = encrypted_password.encode()
+        decrypted_password = f.decrypt(encrypted_password_bytes)
+        return decrypted_password.decode()
     
     def generate_password(self):
         """
