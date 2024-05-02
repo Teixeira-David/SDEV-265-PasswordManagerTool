@@ -21,13 +21,11 @@ from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
 # Import project modules
-from user_object_class import User
-from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
 from tool_tip import CreateToolTip
 from view_account_ui_composable import View_All_Accounts_UiComposable, View_SocialMedia_Accounts_UiComposable
 from view_account_ui_composable import View_WebService_Accounts_UiComposable, View_Fiance_Accounts_UiComposable, View_Personal_Accounts_UiComposable
-
+from generate_password_ui import CustomPasswordGen_UiComposable
 
 #######################################################################################################
 # Main Dashboard Ui Composable Class
@@ -85,9 +83,10 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         # Create the dynamic column 
         self.create_dynamic_column()
         
-    def switch_composable(self, frame_class, *args, **kwargs):
+    def switch_dashboard_composable(self, frame_class, *args, **kwargs):
         """
-        Destroys the current frame and replaces it with a new one from the given frame class.
+        Function Name: switch_dashboard_composable
+        Description: Destroys the current frame and replaces it with a new one from the given frame class.
         """
         if self.current_frame is not None:
             self.current_frame.destroy_ui_composable()  # Destroy the current composable
@@ -198,7 +197,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function creates the dynamic column for the main UI
         """
         # Create the paned_window widget
-        self.paned_window = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
+        self.paned_window = ttk.Panedwindow(self.controller, orient=tk.HORIZONTAL)
         
         # Create the dynamic column as a Frame
         self.dynamic_column = tk.Frame(self.paned_window, bg='#dddddd', width=60, highlightbackground='lightgrey', highlightthickness=0.5)
@@ -306,7 +305,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
             #frame.pack(fill='both', expand=True)  # Make the frame visible using pack
         else:
             print(f"Frame {frame_name} not found")
-            
+
     def resize_Icon(self, icon_path, size=(32, 32)):
         """
         Function Name: resize_Icon
@@ -343,8 +342,9 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Debugging
         print("load_all_accounts_composable triggered")
+        self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_composable(View_All_Accounts_UiComposable)
+        self.switch_dashboard_composable(View_All_Accounts_UiComposable)
 
     def load_social_media_composable(self):
         """ 
@@ -353,8 +353,9 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Debugging
         print("load_social_media_composable triggered")
+        self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_composable(View_SocialMedia_Accounts_UiComposable)
+        self.switch_dashboard_composable(View_SocialMedia_Accounts_UiComposable)
         
     def load_web_services_composable(self):
         """ 
@@ -363,8 +364,9 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Debugging
         print("load_web_services_composable triggered")
+        self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_composable(View_WebService_Accounts_UiComposable)
+        self.switch_dashboard_composable(View_WebService_Accounts_UiComposable)
         
     def load_finance_composable(self):
         """ 
@@ -373,8 +375,9 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Debugging
         print("load_finance_composable triggered")
+        self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_composable(View_Fiance_Accounts_UiComposable)
+        self.switch_dashboard_composable(View_Fiance_Accounts_UiComposable)
         
     def load_personal_composable(self):
         """ 
@@ -382,9 +385,10 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function executes when the user clicks on 'Personal' button to display the UI composable
         """
         # Debugging
-        print("load_personal_composable triggered")               
+        print("load_personal_composable triggered")     
+        self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_composable(View_Personal_Accounts_UiComposable)
+        self.switch_dashboard_composable(View_Personal_Accounts_UiComposable)
 
     def clear_entry(self):
         """ 

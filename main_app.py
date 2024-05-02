@@ -28,7 +28,7 @@ from user_login_ui import UserLogin_UiComposable, AddNewUser_UiComposable
 from database_script import Database, Database_File_Handler
 from generate_password_ui import CustomPasswordGen_UiComposable
 from dashboard_ui import MainDashboard_UiComposable
-
+from crud_ui_composable import Add_Accounts_UiComposable
 
 #######################################################################################################
 # Main Ui Composable Class
@@ -87,7 +87,7 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         Description: This function creates the frame container stack for the main UI
         """
         # Initialize frames
-        self.frames = {}
+        self.standard_frame = {}
         
         # Create the frames for the main UI
         for FrameClass in [
@@ -99,7 +99,7 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
             # Create the frame and add it to the stack
             frame = FrameClass(parent=self.main_container, controller=self)
             # Add the frame to the stack
-            self.frames[FrameClass.__name__] = frame
+            self.set_frames(FrameClass.__name__, frame)
             # Ensure all frames are in the same grid cell and can expand/fill.
             frame.grid(row=0, column=0, sticky="nsew")
             frame.grid_remove()
@@ -107,9 +107,9 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         self.main_container.grid_columnconfigure(0, weight=1)
         
         # Show initial frame
-        #self.show_frame("MainDashboard_UiComposable")
-        self.show_frame("UserLogin_UiComposable")
-            
+        self.show_grid_frame("MainDashboard_UiComposable")
+        #self.show_grid_frame("UserLogin_UiComposable")
+    
 def init_primary_boot_methods():
     """ 
     Function Name: init_primary_boot_methods

@@ -38,14 +38,16 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
     Class Description: This class is the custom password generator page of the program where the user 
     can create a custom password based of provided parameters.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, tag=None, *args, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """            
         # Create the root tkinter variable
         super().__init__(parent, *args, **kwargs)
+        self.parent = parent
         self.controller = controller # Set the controller object for direction flow
+        self.tag = tag
         self.controller.shared_data = {'generated_password': None}  # Initializing shared data
 
         # Create the main Ui Frame
@@ -57,7 +59,7 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: Creates a fixed-size frame for UI elements.
         """
         # Adjust the size as needed
-        self.parent_ui_frame(600, 400)
+        self.parent_ui_frame(600, 400, self.tag)
         
         # Call this method to set up the header frame
         self.create_logo_image()
@@ -227,8 +229,9 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
             if messagebox.askyesno("Password Generation", f"The newly generated password is: \n\n{generated_password}\n\nDo you want to use this password?"):
                 # Save the password in shared_data
                 self.controller.shared_data['generated_password'] = generated_password
-                # Optionally switch back to the Add New User frame
-                self.controller.show_frame("AddNewUser_UiComposable")
+                self.destroy_child_frame()
+                # Switch back to the previous frame
+                self.switch_frame_composable()
             else:
                 print("User declined the new password")
                 self.clear_entry()
@@ -289,26 +292,42 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         pwp.generate_password()
         return pwp.password
 
-    def add_new_custom_password_btn(self):
+    def switch_frame_composable(self):
         """ 
-        Function Name: add_new_custom_password_btn
-        Function Purpose: This function executes when the user accepts the newly created password.
-        """
-        print("Add new custom password")
-        
-    def back_btn(self, back_stack_frame=None):
+        Function Name: switch_frame_composable
+        Function Purpose: This function is executed once the user clicks on the 'Add' or 'Edit' button inside the
+        """  
+        if self.tag == "Add":
+            # Import the class at the top of the file if it's not already imported
+            from crud_ui_composable import Add_Accounts_UiComposable 
+
+            # Assuming 'Add_Accounts_UiComposable' was initialized and managed by the controller
+            self.destroy_child_frame()
+            self.switch_composable(Add_Accounts_UiComposable, frame_type='crud')
+        elif self.tag == "Edit":
+            # Import the class at the top of the file if it's not already imported
+            from crud_ui_composable import Edit_Accounts_UiComposable 
+            
+            # Assuming 'Edit_Accounts_UiComposable' was initialized and managed by the controller
+            self.destroy_child_frame()
+            self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud')
+        else:
+            self.controller.show_grid_frame("AddNewUser_UiComposable")  
+            
+    def back_btn(self):
         """ 
         Function Name: back_btn
         Function Purpose: This function is executed once the user clicks on the exit button inside the result
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
-        """       
-        # Check if the back_stack_frame is not empty and if not direct controller to the back stack item behind 
-        # the what is currently showing
-        if back_stack_frame:
-            self.controller.show_frame(back_stack_frame)
-        else:
-            self.controller.show_frame("AddNewUser_UiComposable")  
-            
+        """  
+        # Hide the current frame    
+        #self.hide_child_frame()
+        self.destroy_child_frame()
+        
+        # Switch back to the previous frame
+        self.switch_frame_composable()
+
+
 #######################################################################################################
 # Copyable Password Dialog Class
 #######################################################################################################

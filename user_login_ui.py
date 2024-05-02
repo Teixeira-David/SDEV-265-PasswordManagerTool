@@ -155,7 +155,7 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
                 usr_obj.delete_user_data()
                 
                 # User input is valid and the user is authenticated proceed to the main dashboard
-                self.controller.show_frame("MainDashboard_UiComposable")
+                self.controller.show_grid_frame("MainDashboard_UiComposable")
             else:
                 # User input is invalid and the user is not authenticated
                 self.set_invalid(self.entry_widget_list, error_msg)
@@ -189,7 +189,7 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: add_new_user_btn
         Function Purpose: This function executes when the user clicks on 'New' button to add a new user
         """
-        self.controller.show_frame("AddNewUser_UiComposable")
+        self.controller.show_grid_frame("AddNewUser_UiComposable")
             
             
 #######################################################################################################
@@ -413,7 +413,7 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
         """       
         # Load the generate custom frame Ui
-        self.controller.show_frame("CustomPasswordGen_UiComposable")
+        self.controller.show_grid_frame("CustomPasswordGen_UiComposable")
         
     def back_btn(self):
         """ 
@@ -429,4 +429,4 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
             del self.controller.shared_data['generated_password']
         
         # Navigate back to the login frame
-        self.controller.show_frame("UserLogin_UiComposable")       
+        self.controller.show_grid_frame("UserLogin_UiComposable")       

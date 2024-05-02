@@ -21,12 +21,12 @@ from datetime import date, datetime, timedelta
 
 # Import project modules
 from database_script import Database_Query_Handler
-
+from user_object_class import User
 
 #######################################################################################################
 # Account Class
 #######################################################################################################         
-class Account():
+class Account(User):
     """
     Class Name: Account
     Class Description: This class gets and sets Account information (fName, lName, Email)
@@ -36,11 +36,10 @@ class Account():
     
     # Common base class for all Accounts information. Instantiates the base class
     def __init__(self, account_id=0, account_name="", account_username="", account_password="",  account_email="", category="", notes=""):
+        # Initialize User part of this Account
+        super().__init__(username=account_username, user_password=account_password, user_email=account_email)
         self.account_id = account_id
         self.account_name = account_name
-        self.account_username = account_username
-        self.account_password = account_password
-        self.account_email = account_email 
         self.category = category
         self.notes = notes
         
@@ -49,25 +48,25 @@ class Account():
     def account_id(self):
         return self._account_id
 
-    # Property decorator object get function to access private Accountname
+    # Property decorator object get function to access private Account name
     @property
     def account_name(self):
         return self._account_name
 
-    # Property decorator object get function to access private account_username
+    # Property decorator object utilizing the user class setter
     @property
-    def account_username(self):
-        return self._account_username
+    def username(self):
+        return super().username
     
-    # Property decorator object get function to access private Password
+    # Property decorator object utilizing the user class setter
     @property
-    def account_password(self):
-        return self._account_password         
+    def user_password(self):
+        return super().user_password         
 
-    # Property decorator object get function to access private Email
+    # Property decorator object utilizing the user class setter
     @property
-    def account_email(self):
-        return self._account_email
+    def user_email(self):
+        return super().user_email
 
     # Property decorator object get function to access private category
     @property
@@ -98,30 +97,29 @@ class Account():
         self._account_name = value
 
     # setter method 
-    @account_username.setter 
-    def account_username(self, value): 
-        # The value must be a string, not empty, and can include underscores and hyphens
-        if not isinstance(value, str) or value.isspace():
-            raise ValueError('Username must be a non-empty string')
-        if not re.match(r"^[a-zA-Z0-9_-]+$", value):
-            raise ValueError('Username must be alphanumeric and can include underscores and hyphens')
-        self._account_username = value
-        
-    # setter method 
-    @account_password.setter 
-    def account_password(self, value): 
-        # The value must be a string and must not be empty
-        if not isinstance(value, str) or value.isspace():
-            raise ValueError('Password cannot be empty')
-        self._account_password = value
+    @username.setter 
+    def username(self, value):
+        if 'specialcase' in value:
+            raise ValueError("Username cannot contain 'specialcase'")
+        super(User, User.username.fset)(self, value)  # Call the User class's setter method
 
     # setter method 
-    @account_email.setter 
-    def account_email(self, value): 
-        # Value must be a string and a valid email address
-        if not isinstance(value, str) or not is_email(value, allow_gtld=True):
-            raise ValueError('Email must be a valid email address')
-        self._account_email = value                   
+    @user_password.setter 
+    def user_password(self, value): 
+        # Do additional checks specific to Account
+        if 'specialcase' in value:
+            raise ValueError("Password cannot contain 'specialcase'")
+        # Use the User class's setter method
+        super(User, User.user_email.fset)(self, value)
+
+    # setter method 
+    @user_email.setter 
+    def user_email(self, value): 
+        # Do additional checks specific to Account
+        if 'specialcase' in value:
+            raise ValueError("Email cannot contain 'specialcase'")
+        # Use the User class's setter method
+        super(User, User.user_email.fset)(self, value)                  
 
     # setter method 
     @category.setter 
@@ -212,9 +210,9 @@ class Account():
 
         return result
     
-    def delete_Account_data(self):
+    def delete_account_data(self):
         """ 
-        Function Name: delete_Account_data
+        Function Name: delete_account_data
         Function Description: This function removes all the objects in the class
         """   
         self._account_id = 0

@@ -25,6 +25,7 @@ from PIL import Image, ImageTk
 from base_methods import Base_Ui_Methods
 from account_object_class import Account
 from tool_tip import CreateToolTip
+from crud_ui_composable import Edit_Accounts_UiComposable, Add_Accounts_UiComposable
 
 #######################################################################################################
 # Base Account Information Class
@@ -45,18 +46,21 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         self.controller = controller 
         self.parent = parent
         
-        # Set the tag for the type of info to populate
-        self.tag = tag
+        self.tag = tag # Set the tag for the type of info to populate
+        self.selected_items = [] # Initialize the selected items list
 
         # Set the last action to None
         self.currently_selected_icon = None
         self.last_action = None 
-
+        self.current_frame = None
+        self.icon_buttons = [] 
+        
     def create_ui_frame(self):
         """
         Function Name: create_ui_frame
         Description: Creates a fixed-size frame for UI elements.
         """ 
+        self.destroy_base_composable()
         # Call the methods to set labels, entry fields, and buttons within this ui_frame 
         self.create_general_labels()
         self.create_tree_view_frame()
@@ -104,12 +108,13 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         column_headers, columns = self.get_columns_by_tag(self.tag)  # Assuming this method returns two lists
         
         # Scrollable Frame for Data
-        scroll_frame = tk.Frame(self.parent, bg='white')
-        scroll_frame.place(relx=0.54, rely=0.1, anchor="n", relwidth=0.91, relheight=0.9)
+        self.scroll_frame = tk.Frame(self.parent, bg='white')
+        self.scroll_frame.place(relx=0.54, rely=0.1, anchor="n", relwidth=0.91, relheight=0.9)
 
         # Treeview widget with headers
-        self.tree = ttk.Treeview(scroll_frame, columns=columns, show='headings', selectmode='extended')
+        self.tree = ttk.Treeview(self.scroll_frame, columns=columns, show='headings', selectmode='extended')
         self.tree.pack(side='left', fill='both', expand=True)
+        self.tree.bind("<ButtonRelease-1>", self.on_item_selection)  # Bind to on_item_selection
 
         # Set column properties dynamically
         for header, col in zip(column_headers, columns):
@@ -120,9 +125,9 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         style.map('Treeview', background=[('selected', '#007cb9')])
 
         # Scrollbar for the treeview
-        scrollbar = ttk.Scrollbar(scroll_frame, orient='vertical', command=self.tree.yview)
-        scrollbar.pack(side='right', fill='y')
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.scrollbar = ttk.Scrollbar(self.scroll_frame, orient='vertical', command=self.tree.yview)
+        self.scrollbar.pack(side='right', fill='y')
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         # Populate the treeview with sample data
         self.get_db_data() 
@@ -214,36 +219,15 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         button_canvas = tk.Canvas(self.parent, width=30, height=30, highlightthickness=0, bd=0)
         button_canvas.place(relx=x, rely=y, anchor="ne")
         button_canvas.create_image(15, 15, image=icon)
-        button_canvas.bind("<Button-1>", lambda event, a=action, btn=button_canvas: self.on_icon_click(event, a, btn))  # Bind to on_icon_click
-        CreateToolTip(button_canvas, tooltip_text)
+        
+        # Keep reference to image
         button_canvas.image = icon
+        button_canvas.bind("<Button-1>", lambda event, a=action, btn=button_canvas: self.on_icon_click(event, a, btn))
+        CreateToolTip(button_canvas, tooltip_text)
+        
+        # Track the button canvas
+        self.icon_buttons.append(button_canvas)
 
-    def show_frame(self, frame_name):
-        """
-        Function Name: show_frame
-        Description: This function shows the frame inside the main container
-        """
-        # Check if the frame to be shown is a sub-frame and handle accordingly
-        if frame_name in self.sub_frames:
-            # Hide all sub-frames first
-            for f in self.sub_frames.values():
-                f.pack_forget()
-            # Show the requested sub-frame
-            self.sub_frames[frame_name].pack(fill='both', expand=True)
-            # Optionally, call a 'show' method if the sub-frame has one
-            if hasattr(self.sub_frames[frame_name], 'show'):
-                self.sub_frames[frame_name].show()
-        else:
-            # Handle main frames: Get the frame from the frame stack
-            frame = self.frames.get(frame_name)
-            if frame:
-                frame.tkraise()  # Ensuring that the frame is brought to the top
-                # Call show method explicitly if defined in the frame
-                if hasattr(frame, 'show'):
-                    frame.show()
-            else:
-                print(f"No frame with name {frame_name} found.")
-                
     def on_icon_click(self, event, action, button_canvas):
         """ 
         Function Name: on_icon_click
@@ -252,11 +236,16 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         # Reset background of previously selected icon if exists
         if self.currently_selected_icon:
             self.currently_selected_icon.configure(bg='SystemButtonFace')  # Reset background to default
+            
         # Highlight the currently selected icon
         button_canvas.configure(bg='lightblue')  # Highlight selection
         self.currently_selected_icon = button_canvas  # Update the reference to the currently selected icon
+        
         # Update the last action
         self.last_action = action  
+
+        # Execute the action
+        action()  # Directly call the action here
         
     def on_item_selection(self, event):
         """
@@ -264,14 +253,32 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: Called when an item in the Treeview is selected.
         """
         self.selected_items = self.tree.selection()
-        print("Selected items:", self.selected_items)
+        #print("Selected items:", self.selected_items)
+
+    def get_selected_items_data(self):
+        """
+        Function Name: get_selected_items_data
+        Description: Retrieves data for all items selected in the Treeview.
+        """
+        # Get all selected item IDs
+        selected_items = self.selected_items  
+        # List to store data of all selected items
+        all_selected_data = []  
+
+        # Loop through each selected item and fetch its data
+        for item_id in selected_items:
+            item_data = self.tree.item(item_id, 'values')  
+            all_selected_data.append(item_data)
+            print("Data for item {}: {}".format(item_id, item_data))  # Debug to view the data selected
+
+        return all_selected_data
 
     def edit_selected_items(self):
         """
         Function Name: edit_selected_items
         Description: Called when the edit button is clicked.
         """
-        selected_items = self.tree.selection()
+        selected_items = self.selected_items
         # Add your logic to edit the selected items
         print("Editing items:", selected_items)
 
@@ -280,11 +287,27 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: delete_selected_items
         Description: Called when the delete button is clicked.
         """
-        selected_items = self.tree.selection()
+        selected_items = self.selected_items
         # Add your logic to delete the selected items
         for item in selected_items:
             self.tree.delete(item)
         print("Deleted items:", selected_items)
+        
+    def destroy_all_composable(self):
+        """ 
+        Function Name: destroy_all_composable
+        Function Purpose: This function executes when the user clicks away from the current composable
+        """
+        # List of all frame types that might be currently displayed
+        frame_types = [
+            Base_AccountInfo_UiComposable,
+        ]
+
+        # Destroy the current frames
+        for frame_type in frame_types:
+            # Append the frame type to the list of frame instances
+            self.destroy_base_composable()
+            print(f"Destroyed composable for {frame_type.__name__}")
         
     def add_new_account_composable(self):
         """ 
@@ -292,17 +315,23 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function executes when the user clicks on 'Add' button to display the add new account
         UI composable
         """
-        print("add_new_account_composable triggered")
-        # Call the composable
-
+        # Initialize and show only the Add_Accounts_UiComposable frame
+        self.destroy_all_composable()
+        self.switch_composable(Add_Accounts_UiComposable, frame_type='crud')
+        
     def edit_account_composable(self):
         """ 
         Function Name: edit_account_composable
         Function Purpose: This function executes when the user clicks on 'Edit' button to display the edit an account
         UI composable
         """
-        print("edit_account_composable triggered")
+        # Get the data from the selected list
+        data = self.get_selected_items_data()
+        print(data) # Debugging purposes
+        
         # Call the composable
+        self.destroy_all_composable()
+        self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud', data=data)
         
     def delete_account_composable(self):
         """ 
@@ -310,9 +339,14 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function executes when the user clicks on 'Delete' button to display the delete an account
         UI composable
         """
-        print("delete_account_composable triggered")
-        # Call the composable
+        print("delete_account_composable triggered") # Debugging purposes
+
+        # Get the data from the selected list
+        data = self.get_selected_items_data()
+        print(data) # Debugging purposes
         
+        # Call the composable
+            
     def destroy_base_composable(self):
         """ 
         Function Name: destroy_base_composable
@@ -324,11 +358,26 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         if hasattr(self, 'header_label'):
             self.header_label.destroy()
             print("Header label destroyed.")
-            
-        # Iterate over all child widgets and destroy them
-        for child in self.winfo_children():
-            child.destroy()
+
+        if hasattr(self, 'tree') and self.tree.winfo_exists():
+            self.tree.unbind("<ButtonRelease-1>")  # Unbind any events tied to the treeview
+            self.tree.destroy()
+            print("Treeview destroyed.")
         
-        # Finally, destroy this frame itself
-        self.destroy()
-        print("Composable destroyed successfully")
+        if hasattr(self, 'scrollbar') and self.scrollbar.winfo_exists():
+            self.scrollbar.destroy()
+            print("Scrollbar destroyed.")
+        
+        # Destroy the scroll frame
+        if hasattr(self, 'scroll_frame') and self.scroll_frame.winfo_exists():
+            self.scroll_frame.destroy()
+            print("Scroll frame destroyed.")
+
+        # Destroy the icon buttons
+        if hasattr(self, 'icon_buttons'):
+            for button_canvas in self.icon_buttons:
+                if button_canvas.winfo_exists():
+                    button_canvas.unbind("<Button-1>")  # Unbind the event before destroying
+                    button_canvas.destroy()  # Destroy the canvas
+                    print("Button canvas destroyed.")
+            self.icon_buttons.clear()  # Clear the list after destroying

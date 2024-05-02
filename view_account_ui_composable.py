@@ -24,7 +24,7 @@ from PIL import Image, ImageTk
 # Import project modules
 from account_object_class import Account
 from tool_tip import CreateToolTip
-from edit import Base_AccountInfo_UiComposable
+from base_account_ui_methods import Base_AccountInfo_UiComposable
 
 #######################################################################################################
 # View Account Information Class
