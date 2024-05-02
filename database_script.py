@@ -203,7 +203,7 @@ class Database():
         # Connect to the database
         db_conn_h.db_connect()
 
-                # Update the session context
+        # Update the session context
         db_mgm_h.update_session_context(self.current_user)
     
     

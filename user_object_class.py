@@ -36,6 +36,7 @@ class User(Database_Query_Handler, Database_Management_Handler):
     """
     # Create class variable shared amongst all User methods
     user_id_list = []   
+    user_id = 0
     
     # Common base class for all Users information. Instantiates the base class
     def __init__(self, user_id=0, username="", user_password="",  user_email="default@gmail.com", registration_date=datetime.now()):
@@ -130,11 +131,42 @@ class User(Database_Query_Handler, Database_Management_Handler):
         else:
             raise TypeError('Registration date must be a datetime object, a recognizable date string, or None')
 
+    def get_user_id(self):
+        """ 
+        Function Name: get_user_id
+        Function Description: This function gets the user id from the database
+        """   
+        # Set the table and column names
+        table = 'TUsers'
+        username_col = 'strUserName'
+        id_col = 'intUserID'
+        
+        # SQL to fetch id for the given username
+        sql = f"""
+                SELECT 
+                    {id_col}
+                FROM 
+                    {table}
+                WHERE 
+                    {username_col} = ?
+                """
+
+        # Execute the query to get the id
+        db_qh = Database_Query_Handler()
+        result = db_qh.get_target_db_record(sql, (self.username,))
+
+        # Result should contain the user id
+        if result is not None:
+            User.user_id = result
+        
     def validate_user_login_cred(self):
         """ 
         Function Name: validate_user_login_cred
         Function Description: This function validates the user login credentials
         """   
+        # First get the user id
+        self.get_user_id()
+        
         # Set the table and column names
         table = 'TUsers'
         username_col = 'strUserName'
@@ -154,7 +186,7 @@ class User(Database_Query_Handler, Database_Management_Handler):
         db_qh = Database_Query_Handler()
         result = db_qh.get_target_db_record(sql, (self.username,))
 
-        # result should contain the hashed password
+        # Result should contain the hashed password
         hashed_password = result
             
         # Verify the user-provided password against the hashed password
@@ -220,7 +252,8 @@ class User(Database_Query_Handler, Database_Management_Handler):
         """ 
         Function Name: delete_user_data
         Function Description: This function removes all the objects in the class
-        """   
+        """             
+        #self._user_id = 0 if self.user_id == 0 else self.user_id
         self._user_id = 0
         self._username = ""
         self._user_password = ""

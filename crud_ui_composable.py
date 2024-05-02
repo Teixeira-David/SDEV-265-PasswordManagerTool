@@ -25,8 +25,7 @@ from pyisemail import is_email
 from base_methods import Base_Ui_Methods
 from account_object_class import Account
 from generate_password_ui import CustomPasswordGen_UiComposable
-from password_object_class import PasswordWithPolicy
-
+from user_object_class import User
 
 #######################################################################################################
 # Add or Edit Account Info Class
@@ -49,6 +48,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         self.tag = tag
         self.data = data
         self.frame = frame 
+        self.selected_data = []
 
     def create_ui_frame(self):
         """
@@ -63,15 +63,17 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             self.parent_ui_frame(600, 550, self.tag)
         
         # Call the method to set up the UI elements
-        self.init_crud_frames()
+        #self.init_crud_frames()
         
         # Call this method to set up the header frame
         self.create_logo_image()
         
         # Call the methods to set labels, entry fields, and buttons within this ui_frame 
         self.create_labels()
+        self.convert_data()
         self.create_entry_fields()
         self.create_buttons()
+        self.config_entry_fields()
         
         # Get the generated password
         self.load_generated_password()
@@ -165,8 +167,15 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             elif label == "Hint":
                 # Treat the 'Hint' as a Text widget, which uses a tuple for width and height
                 entry = Text(self.ui_frame, width=entry_widths[i][0], height=entry_widths[i][1])
+                self.hint_entry = entry 
             else:
                 entry = Entry(self.ui_frame, width=entry_widths[i])
+                if label == "AppName":
+                    self.appname_entry = entry
+                elif label == "Username":
+                    self.username_entry = entry
+                elif label == "Email":
+                    self.email_entry = entry
             entries.append(entry)
 
         # Determine the y-axis starting point and spacing between widgets
@@ -190,14 +199,49 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             self.category_drop = ttk.Combobox(self.ui_frame, values=category_values, width=27, state='readonly')
             self.category_drop.place(relx=0.57, y=y_start - y_increment, anchor="center")
         else:
-            self.items_selected_drop = ttk.Combobox(self.ui_frame, values=category_values, width=27, state='readonly')
+            self.items_selected_drop = ttk.Combobox(self.ui_frame, values=self.selected_data, width=27, state='readonly')
             self.category_drop = ttk.Combobox(self.ui_frame, values=category_values, width=27, state='readonly')
             self.items_selected_drop.place(relx=0.57, y=y_start - 2 * y_increment, anchor="center")
             self.category_drop.place(relx=0.57, y=y_start - y_increment, anchor="center")
+            # Bind the selection of an item to populate the fields
+            self.items_selected_drop.bind("<<ComboboxSelected>>", lambda e: self.populate_fields())
 
         # Store all widgets in a list for easy access or modification later
         self.entry_widget_list = [self.category_drop] + entries if self.tag == "Add" else [self.category_drop, self.items_selected_drop] + entries
-        
+
+    def config_entry_fields(self):
+        """
+        Function Name: config_entry_fields
+        Description: This function configures the entry fields for the main UI
+        """
+        # Set the entry fields to be disabled if the tag is 'Edit'
+        if self.tag == "Edit":
+            for entry in self.entry_widget_list:
+                entry.config(state='disabled')
+            # Disable the 'Generate' button and the 'Items Selected' drop-down
+            self.show_btn.config(state='disabled')
+            self.gen_btn.config(state='disabled')
+            self.items_selected_drop.config(state='readonly')
+        else:
+            # Set the placeholder text for the entry fields
+            placeholders = {
+                self.appname_entry: "e.g. Facebook, Twitter, etc.",
+                self.username_entry: "e.g. johndoe123",
+                self.email_entry: "e.g. youremail@gmail.com",
+            }
+            # Ensure the placeholder text is displayed in the entry fields
+            for entry, placeholder in placeholders.items():
+                entry.insert(0, placeholder)
+                entry.config(fg='grey')
+                entry.bind("<FocusIn>", lambda event, e=entry, ph=placeholder: self.on_entry_click(event, e, ph))
+                entry.bind("<FocusOut>", lambda event, e=entry, ph=placeholder: self.on_focus_out(event, e, ph))
+
+            # Special handling for the Text widget for hint
+            self.hint_entry.insert("1.0", "Add any additional notes or hints here...")
+            self.hint_entry.config(fg='grey')
+            self.hint_entry.bind("<FocusIn>", lambda event, e=self.hint_entry, ph="Add any additional notes or hints here...": self.on_entry_click(event, e, ph))
+            self.hint_entry.bind("<FocusOut>", lambda event, e=self.hint_entry, ph="Add any additional notes or hints here...": self.on_focus_out(event, e, ph))
+
     def create_buttons(self):
         """
         Function Name: create_buttons
@@ -209,8 +253,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             y_values = [300, 520]
         
         # Stylize buttons to match the ui elements
-        Button(self.ui_frame, text="Show", command=self.show_password_btn).place(relx=0.8, y=y_values[0], anchor="center")
-        Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn).place(relx=0.25, y=y_values[0], anchor="e")
+        self.show_btn = Button(self.ui_frame, text="Show", command=self.show_password_btn)
+        self.show_btn.place(relx=0.8, y=y_values[0], anchor="center")
+        self.gen_btn = Button(self.ui_frame, text="Generate", width=10, command=self.generate_btn)
+        self.gen_btn.place(relx=0.25, y=y_values[0], anchor="e")
         Button(self.ui_frame, text="Back", width=10, command=self.back_btn).place(relx=0.3, y=y_values[1], anchor="center")
         Button(self.ui_frame, text="Reset", width=10, command=self.clear_entry).place(relx=0.5, y=y_values[1], anchor="center")
         Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=y_values[1], anchor="center")
@@ -234,7 +280,27 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
 
         # Create a user object entry list of the input values
         return [item_selected, category, appname, username, first_password, second_password, email, hint]
-            
+
+    def validate_drop_inputs(self):
+        """
+        Function Name: validate_drop_inputs
+        Function Purpose: This function validates the drop menu user inputs.
+        """
+        # Get the user input and set the error dictionary
+        input_list = self.get_user_input()
+        errors = {}
+        
+        # Always check for category selection regardless of the tag
+        if not self.category_drop.get().strip():
+            errors['category_drop'] = "Please select a category"
+
+        # Check for item selection if the tag is not 'Add'
+        if self.tag != "Add":
+            if not self.items_selected_drop.get().strip():
+                errors['items_selected_drop'] = "Please select an item from the list"
+        
+        return input_list, errors
+
     def submit_btn(self):
         """ 
         Function Name: submit_btn
@@ -244,25 +310,42 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         self.set_bg_to_white(self.entry_widget_list)
         
         # Get the user input
-        input_list = self.get_user_input()
-
+        input_list, errors = self.validate_drop_inputs()
+        if errors:
+            for field, error in errors.items():
+                self.set_invalid(getattr(self, field), error)
+            return
+        
+        # Set the index based off the tag
+        if self.tag == "Add":
+            input_list.pop(0)
+            first_pswrd_idx = 3
+            second_pswrd_idx = 4
+        else:
+            first_pswrd_idx = 4
+            second_pswrd_idx = 5
+            
         # First check if the two user passwords are the same and if not, to return warning the user didn't 
         # enter the same password
-        if input_list[3] != input_list[4]:
+        if input_list[first_pswrd_idx] != input_list[second_pswrd_idx]:
             self.set_invalid([self.first_password_entry, self.second_password_entry], invalid_pswrd_msg)
             return
 
         # Declare the Error Message
         invalid_pswrd_msg = "Passwords do not match. Please try again."
         confirmation_message = (
-            f"You are about to add a new account named '{input_list[1]}' under the category '{input_list[0]}'.\n"
+            f"You are about to add a new account named '{input_list[1]}' under the category '{input_list[0]}'.\n\n"
             "Adding this account will allow you to manage its details through this tool. \n\n"
             "Do you want to proceed?"
         )
 
+        # Debug, make sure to comment this out after testing
+        User.user_id = 1
+        
         try:
             # Attempt to create a Account object with the provided credentials
             acc_obj = Account(
+                user_id=User.user_id,
                 account_name=input_list[1], 
                 account_username=input_list[2], 
                 account_password=input_list[3], 
@@ -281,7 +364,11 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             
         except ValueError as e:
             # Handle specific field errors based on message content
-            if 'acount name' in str(e).lower():
+            if 'category' in str(e).lower():
+                self.set_invalid(self.category_drop, str(e))
+            elif 'items selected' in str(e).lower():
+                self.set_invalid(self.items_selected_drop, str(e))
+            elif 'acount name' in str(e).lower():
                 self.set_invalid(self.appname_entry, str(e))
             elif 'username' in str(e).lower():
                 self.set_invalid(self.username_entry, str(e))
@@ -316,7 +403,45 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             self.second_password_entry.delete(0, END)
             self.second_password_entry.insert(0, generated_password)
             self.second_password_entry.config(show='*')
-                            
+
+    def convert_data(self):
+        """ 
+        Function Name: convert_data
+        Function Purpose: This function is converts the data passed to only represent the user name and app name
+        """      
+        for data in self.data:
+            self.selected_data.append(data[0] + " - " + data[1])
+
+    def populate_fields(self):
+        """
+        Function Name: populate_fields
+        Description: Populate the entry fields based on the selected item in the dropdown.
+        """
+        # Get the index of the selected item
+        selected_index = self.items_selected_drop.current()
+        if selected_index >= 0:
+            # Get the data tuple for the selected index
+            selected_item = self.data[selected_index]
+
+            # Clear existing entries
+            self.appname_entry.delete(0, END)
+            self.username_entry.delete(0, END)
+            self.email_entry.delete(0, END)
+            self.hint_entry.delete("1.0", END)
+            
+            # Assuming the data tuple structure: (app_name, username, password, email, hint)
+            self.appname_entry.insert(0, selected_item[0])
+            self.username_entry.insert(0, selected_item[1])
+            # # Decrypt the password before setting it in the entry
+            # decrypted_password = self.decrypt_password(selected_item[2], 'your_encryption_key_here')
+            # self.first_password_entry.insert(0, decrypted_password)
+            # self.second_password_entry.insert(0, decrypted_password)
+            self.email_entry.insert(0, selected_item[3])
+            self.hint_entry.insert("1.0", selected_item[4])
+
+        else:
+            messagebox.showerror("Selection Error", "No item selected or available for editing.")
+
     def clear_entry(self):
         """ 
         Function Name: clear_entry

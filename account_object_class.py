@@ -22,6 +22,7 @@ from datetime import date, datetime, timedelta
 # Import project modules
 from database_script import Database_Query_Handler
 from user_object_class import User
+from password_object_class import PasswordWithPolicy
 
 #######################################################################################################
 # Account Class
@@ -35,9 +36,10 @@ class Account(User):
     account_id_list = []   
     
     # Common base class for all Accounts information. Instantiates the base class
-    def __init__(self, account_id=0, account_name="", account_username="", account_password="",  account_email="", category="", notes=""):
+    def __init__(self, account_id=0, user_id=0, account_name="", account_username="", account_password="",  account_email="", category="", notes=""):
         # Initialize User part of this Account
-        super().__init__(username=account_username, user_password=account_password, user_email=account_email)
+        super().__init__(user_id=user_id, username=account_username, user_password=account_password, user_email=account_email)
+        self.user_id = user_id
         self.account_id = account_id
         self.account_name = account_name
         self.category = category
@@ -48,6 +50,11 @@ class Account(User):
     def account_id(self):
         return self._account_id
 
+    # Property decorator object get function to access private User ID
+    @property
+    def user_id(self):
+        return super().user_id
+    
     # Property decorator object get function to access private Account name
     @property
     def account_name(self):
@@ -85,7 +92,14 @@ class Account(User):
         if not isinstance(value, int) or value < 0:
             raise ValueError('ID must be a non-negative integer')
         self._account_id = value
-    
+
+    # setter method 
+    @user_id.setter 
+    def user_id(self, value):
+        if not isinstance(value, int) or value < 0:
+            raise ValueError("User ID cannot contain 'specialcase'")
+        self._user_id = value
+        
     # setter method 
     @account_name.setter 
     def account_name(self, value): 
@@ -101,7 +115,7 @@ class Account(User):
     def username(self, value):
         if 'specialcase' in value:
             raise ValueError("Username cannot contain 'specialcase'")
-        super(User, User.username.fset)(self, value)  # Call the User class's setter method
+        super(Account, Account).username.fset(self, value) # Call the User class's setter method
 
     # setter method 
     @user_password.setter 
@@ -110,7 +124,7 @@ class Account(User):
         if 'specialcase' in value:
             raise ValueError("Password cannot contain 'specialcase'")
         # Use the User class's setter method
-        super(User, User.user_email.fset)(self, value)
+        super(Account, Account).user_password.fset(self, value)
 
     # setter method 
     @user_email.setter 
@@ -119,7 +133,7 @@ class Account(User):
         if 'specialcase' in value:
             raise ValueError("Email cannot contain 'specialcase'")
         # Use the User class's setter method
-        super(User, User.user_email.fset)(self, value)                  
+        super(Account, Account).user_email.fset(self, value)                 
 
     # setter method 
     @category.setter 
@@ -210,6 +224,46 @@ class Account(User):
 
         return result
     
+    def add_new_account(self):
+        """ 
+        Function Name: add_new_account
+        Function Description: This function adds a new account to the database
+        """   
+        # Get today's date in YYYY-MM-DD format
+        todays_date = date.today().isoformat()
+        
+        # Define parameters for the insert_or_update_values method
+        table_name = 'TAccounts'
+        table_col_list = [
+            'intAccountID', 
+            'intUserID', 
+            'strAppName', 
+            'strAppUserName', 
+            'strAppPassword', 
+            'strAppEmail', 
+            'strCategory', 
+            'strNotes',
+            'dtmLastUpdate',
+            'strModifiedReason'
+            ]
+        table_values_list = [
+            self.user_id,
+            self.account_name,
+            self.username,
+            PasswordWithPolicy.hash_password(self.user_password),
+            self.user_email,
+            self.category,
+            self.notes,
+            todays_date,
+            'New Account Registration',
+        ]
+        prim_id = 'intAccountID'
+        
+        # Package parameters
+        params = (table_name, table_col_list, table_values_list, prim_id)
+        # Call insert_or_update_values with the prepared parameters
+        self.insert_or_update_values(params)
+        
     def delete_account_data(self):
         """ 
         Function Name: delete_account_data

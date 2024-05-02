@@ -177,7 +177,11 @@ class Base_Ui_Methods():
         """
         # Delete the content of the entry widgets
         for i, widget in enumerate(entry_widgets):
-            widget.delete(0, END)
+            if isinstance(widget, Entry):
+                widget.delete(0, END)
+            elif isinstance(widget, Text):
+                widget.delete("1.0", END)
+            
             # Set focus to the first widget in the list
             if i == widget_index:
                 widget.focus()
@@ -500,3 +504,31 @@ class Base_Ui_Methods():
             print(f"Frame unregistered: {frame_key}")
         else:
             print(f"Frame not found: {frame_key}")
+    
+    @staticmethod
+    def on_entry_click(event, entry, place_holder):
+        """ 
+        Function Name: on_entry_click
+        Function Purpose: This function gets called whenever entry is clicked by a user to start a new entry.
+        """    
+        current_text = entry.get("1.0", "end-1c") if isinstance(entry, Text) else entry.get()
+        if current_text == place_holder:
+            if isinstance(entry, Text):
+                entry.delete("1.0", "end")
+            else:
+                entry.delete(0, "end")
+            entry.config(fg='black')
+    
+    @staticmethod
+    def on_focus_out(event, entry, place_holder):
+        """ 
+        Function Name: on_focus_out
+        Function Purpose: This function gets called whenever the entry loses focus.
+        """            
+        current_text = entry.get("1.0", "end-1c") if isinstance(entry, Text) else entry.get()
+        if current_text == '':
+            if isinstance(entry, Text):
+                entry.insert("1.0", place_holder)
+            else:
+                entry.insert(0, place_holder)
+            entry.config(fg='grey')
