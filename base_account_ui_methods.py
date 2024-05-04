@@ -293,9 +293,15 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: destroy_all_composable
         Function Purpose: This function executes when the user clicks away from the current composable
         """
+        from view_account_ui_composable import View_All_Accounts_UiComposable, View_SocialMedia_Accounts_UiComposable, View_WebService_Accounts_UiComposable, View_Fiance_Accounts_UiComposable, View_Personal_Accounts_UiComposable
         # List of all frame types that might be currently displayed
         frame_types = [
             Base_AccountInfo_UiComposable,
+            View_All_Accounts_UiComposable,
+            View_SocialMedia_Accounts_UiComposable,
+            View_WebService_Accounts_UiComposable,
+            View_Fiance_Accounts_UiComposable,
+            View_Personal_Accounts_UiComposable,
         ]
 
         # Destroy the current frames
@@ -324,6 +330,11 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         data = self.get_selected_items_data()
         print(data) # Debugging purposes
         
+        # If not data items are selected, warn the user to select an item
+        if not data:
+            messagebox.showwarning("No Selection", "Please select an item to edit.")
+            return
+        
         # Get the user selected data before opening the custom password generator
         self.controller.shared_data = {'selected_data': data}
         
@@ -351,6 +362,11 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         # Retrieve the data from the selected list
         data = self.get_selected_items_data()
         print(data)  # Debugging purposes
+        
+        # If not data items are selected, warn the user to select an item
+        if not data:
+            messagebox.showwarning("No Selection", "Please select an item to edit.")
+            return
         
         # Convert the data for processing
         self.convert_selected_data(data)

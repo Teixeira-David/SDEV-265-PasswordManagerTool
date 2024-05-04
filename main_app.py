@@ -107,8 +107,8 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         self.main_container.grid_columnconfigure(0, weight=1)
         
         # Show initial frame
-        self.show_grid_frame("MainDashboard_UiComposable")
-        #self.show_grid_frame("UserLogin_UiComposable")
+        #self.show_grid_frame("MainDashboard_UiComposable")
+        self.show_grid_frame("UserLogin_UiComposable")
     
 def init_primary_boot_methods():
     """ 

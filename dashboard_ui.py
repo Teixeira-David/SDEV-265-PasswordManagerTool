@@ -25,7 +25,6 @@ from base_methods import Base_Ui_Methods
 from tool_tip import CreateToolTip
 from view_account_ui_composable import View_All_Accounts_UiComposable, View_SocialMedia_Accounts_UiComposable
 from view_account_ui_composable import View_WebService_Accounts_UiComposable, View_Fiance_Accounts_UiComposable, View_Personal_Accounts_UiComposable
-from generate_password_ui import CustomPasswordGen_UiComposable
 
 #######################################################################################################
 # Main Dashboard Ui Composable Class
@@ -334,6 +333,9 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         """
         # Debugging
         print("load_settings_composable triggered")   
+        # Show warning message about this page is not fully implemented yet and if the user wants to exit, they must enter 'yes'
+        if messagebox.askyesno("Warning", "This page is not fully implemented yet. Do you want to exit the program?"):
+            self.exit_app_btn()
         
     def load_all_accounts_composable(self):
         """ 
