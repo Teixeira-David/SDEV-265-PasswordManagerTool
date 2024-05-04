@@ -86,25 +86,31 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         Function Name: init_frames
         Description: This function creates the frame container stack for the main UI
         """
-        # Initialize frames
-        self.standard_frame = {}
-        
         # Create the frames for the main UI
-        for FrameClass in [
+        frame_classes = [
             UserLogin_UiComposable, 
             AddNewUser_UiComposable, 
             CustomPasswordGen_UiComposable,
-            MainDashboard_UiComposable,
-            ]:
-            # Create the frame and add it to the stack
+            MainDashboard_UiComposable  # Assuming MainDashboard_UiComposable is a frame to be managed
+        ]
+
+        # Initialize frames
+        self.standard_frame = {}
+
+        # Iterate over frame classes and instantiate each one
+        for FrameClass in frame_classes:
             frame = FrameClass(parent=self.main_container, controller=self)
-            # Add the frame to the stack
-            self.set_frames(FrameClass.__name__, frame)
-            # Ensure all frames are in the same grid cell and can expand/fill.
             frame.grid(row=0, column=0, sticky="nsew")
-            frame.grid_remove()
+            frame.grid_remove()  # Initially remove from grid
+            self.standard_frame[FrameClass.__name__] = frame  # Add the frame to the stack
+        
+        # Set the container to allow frames to expand and fill
         self.main_container.grid_rowconfigure(0, weight=1)
         self.main_container.grid_columnconfigure(0, weight=1)
+
+        # Initialize and setup the MainDashboard_UiComposable frame
+        dash = self.standard_frame['MainDashboard_UiComposable']
+        dash.create_ui_frame()  # Setup the MainDashboard
         
         # Show initial frame
         #self.show_grid_frame("MainDashboard_UiComposable")

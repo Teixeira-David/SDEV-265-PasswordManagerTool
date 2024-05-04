@@ -37,19 +37,26 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
     Class Name: Base_AccountInfo_UiComposable
     Class Description: This class is the primary Ui class for all of the user's account information Ui Composable.
     """
-    def __init__(self, parent, controller, tag, *args, **kwargs):
+    def __init__(self, parent, controller, tag, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Super class instantiation
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
         
         self.tag = tag # Set the tag for the type of info to populate
         self.selected_items = [] # Initialize the selected items list
 
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs:", kwargs)
+        
+        # Retrieve sidebar control methods from kwargs
+        self.hide_sidebar = kwargs.get('hide_sidebar')
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the last action to None
         self.currently_selected_icon = None
         self.last_action = None 
@@ -285,7 +292,7 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
             # Debug: Print selected indices to verify
             print("Data for item {}: {}".format(item, item_data))  # Debug to view the data selected
             print("Selected indices:", self.selected_indices)
-            
+        
         return self.all_selected_data
 
     def destroy_all_composable(self):
@@ -316,9 +323,19 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function executes when the user clicks on 'Add' button to display the add new account
         UI composable
         """
+        # Hide the sidebar elements
+        if self.hide_sidebar:
+            self.hide_sidebar()
+
+        print("Received kwargs:", self.hide_sidebar)
+        print("Received kwargs:", self.show_sidebar)
+        
         # Initialize and show only the Add_Accounts_UiComposable frame
         self.destroy_all_composable()
-        self.switch_composable(Add_Accounts_UiComposable, frame_type='crud')
+        self.switch_composable(
+            frame_class=Add_Accounts_UiComposable, 
+            show_sidebar=self.show_sidebar
+            )
         
     def edit_account_composable(self):
         """ 
@@ -336,11 +353,22 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
             return
         
         # Get the user selected data before opening the custom password generator
-        self.controller.shared_data = {'selected_data': data}
+        #self.controller.shared_data = {'selected_data': data}
+        
+        # Hide the sidebar elements
+        if self.hide_sidebar:
+            self.hide_sidebar()
+        print("Received kwargs:", self.hide_sidebar)
+        print("Received kwargs:", self.show_sidebar)
         
         # Call the composable
         self.destroy_all_composable()
-        self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud', data=data, selected_index=self.selected_indices)
+        self.switch_composable(
+            frame_class=Edit_Accounts_UiComposable,
+            data=data, 
+            selected_index=self.selected_indices, 
+            show_sidebar=self.show_sidebar
+            )
 
     def convert_selected_data(self, data):
         """ 

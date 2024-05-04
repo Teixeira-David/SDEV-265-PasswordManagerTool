@@ -46,7 +46,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         self.controller = controller # Set the controller object for direction flow
         self.parent = parent
         # Create the main Ui Frame
-        self.create_ui_frame()    
+        #self.create_ui_frame()    
 
     def create_ui_frame(self):
         """
@@ -82,7 +82,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         # Create the dynamic column 
         self.create_dynamic_column()
         
-    def switch_dashboard_composable(self, frame_class, *args, **kwargs):
+    def switch_dashboard_composable(self, frame_class, **kwargs):
         """
         Function Name: switch_dashboard_composable
         Description: Destroys the current frame and replaces it with a new one from the given frame class.
@@ -92,7 +92,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
             print(f"Destroyed current frame: {type(self.current_frame).__name__}")
 
         # Create the new frame and pack it into the same parent
-        self.current_frame = frame_class(self, self.controller, *args, **kwargs)
+        self.current_frame = frame_class(self.controller, self.controller, **kwargs)
         #self.current_frame.pack(fill='both', expand=True)
         print(f"Loaded new frame: {frame_class.__name__}")
         
@@ -345,8 +345,12 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         # Debugging
         print("load_all_accounts_composable triggered")
         self.destroy_child_frame()
-        # Show the 'social media' composable
-        self.switch_dashboard_composable(View_All_Accounts_UiComposable)
+        # Pass hide and show sidebar methods through kwargs
+        self.switch_dashboard_composable(
+            View_All_Accounts_UiComposable,
+            hide_sidebar=self.hide_sidebar_elements,
+            show_sidebar=self.show_sidebar_elements
+        )
 
     def load_social_media_composable(self):
         """ 
@@ -357,7 +361,11 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         print("load_social_media_composable triggered")
         self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_dashboard_composable(View_SocialMedia_Accounts_UiComposable)
+        self.switch_dashboard_composable(
+            View_SocialMedia_Accounts_UiComposable,
+            hide_sidebar=self.hide_sidebar_elements,
+            show_sidebar=self.show_sidebar_elements
+        )
         
     def load_web_services_composable(self):
         """ 
@@ -368,7 +376,11 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         print("load_web_services_composable triggered")
         self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_dashboard_composable(View_WebService_Accounts_UiComposable)
+        self.switch_dashboard_composable(
+            View_WebService_Accounts_UiComposable,
+            hide_sidebar=self.hide_sidebar_elements,
+            show_sidebar=self.show_sidebar_elements
+        )
         
     def load_finance_composable(self):
         """ 
@@ -379,7 +391,11 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         print("load_finance_composable triggered")
         self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_dashboard_composable(View_Fiance_Accounts_UiComposable)
+        self.switch_dashboard_composable(
+            View_Fiance_Accounts_UiComposable,
+            hide_sidebar=self.hide_sidebar_elements,
+            show_sidebar=self.show_sidebar_elements
+        )
         
     def load_personal_composable(self):
         """ 
@@ -390,29 +406,38 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         print("load_personal_composable triggered")     
         self.destroy_child_frame()
         # Show the 'social media' composable
-        self.switch_dashboard_composable(View_Personal_Accounts_UiComposable)
+        self.switch_dashboard_composable(
+            View_Personal_Accounts_UiComposable,
+            hide_sidebar=self.hide_sidebar_elements,
+            show_sidebar=self.show_sidebar_elements
+        )
 
-    def clear_entry(self):
-        """ 
-        Function Name: clear_entry
-        Function Purpose: This function is executed if the user clicks clear. The fields should be deleted
+    def hide_sidebar_elements(self):
         """
-        # Set the entry radio and check boxes to default values
-        self.rb_char_len_var.set(8) # Set the default value for the radio button or character length
-        for option in self.rb_char_set_vars: # Set the default value for the character set
-            self.rb_char_set_vars[option].set(True)
-        self.rb_expiry_period_var.set(30) # Set the default value for the radio button or expiry period
+        Function Name: hide_ui_elements
+        Description: This function hides the sidebar and dynamic column.
+        """
+        # Check if the sidebar exists and then hide it
+        if hasattr(self, 'sidebar') and self.sidebar.winfo_exists():
+            self.sidebar.pack_forget()
+            self.sidebar.destroy()
+
+        # Check if the paned_window exists and then hide it
+        self.show_or_hide_pane()
         
-    def back_btn(self, back_stack_frame=None):
-        """ 
-        Function Name: back_btn
-        Function Purpose: This function is executed once the user clicks on the exit button inside the result
-        frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
-        """       
-        # Check if the back_stack_frame is not empty and if not direct controller to the back stack item behind 
-        # the what is currently showing
-        if back_stack_frame:
-            self.controller.show_frame(back_stack_frame)
-        else:
-            self.controller.show_frame("UserLogin_UiComposable")  
+    def show_sidebar_elements(self):
+        """
+        Function Name: show_ui_elements
+        Description: This function reveals the sidebar and dynamic column.
+        """
+        # Check if the paned_window exists and then hide it
+        self.primary_sidebar_composable()
+        print(self.paned_window_hidden)
+        if self.paned_window_hidden:
+            self.load_all_accounts_composable()
+            self.show_or_hide_pane()
+        
+        # # Debugging: Highlight areas to visually confirm layout behavior
+        # self.sidebar.config(bg='red')  # Temporarily set to red to see its actual area
+        # self.config(bg='blue')  # Temporarily set the parent's background to blue
         

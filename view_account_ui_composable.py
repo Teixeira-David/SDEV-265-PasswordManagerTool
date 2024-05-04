@@ -35,21 +35,34 @@ class View_All_Accounts_UiComposable(tk.Frame):
     Class Name: View_All_Accounts_UiComposable
     Class Description: This class views all of the user's account information.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
 
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs in View_All_Accounts_UiComposable:", kwargs)
+
+        # Retrieve sidebar control methods from kwargs
+        self.hide_sidebar = kwargs.get('hide_sidebar')
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the tag name that controls what to load
         self.tag = "Account_Info"
         
         # Instantiate the base account ui composable
-        self.ba_ui = Base_AccountInfo_UiComposable(parent=self.parent, controller=self.controller, tag=self.tag)
+        self.ba_ui = Base_AccountInfo_UiComposable(
+            parent=self.parent, 
+            controller=self.controller, 
+            tag=self.tag,
+            hide_sidebar=self.hide_sidebar,
+            show_sidebar=self.show_sidebar
+            )
         
         # Create the main Ui Frame
         self.ba_ui.create_ui_frame()   
@@ -66,21 +79,34 @@ class View_SocialMedia_Accounts_UiComposable(tk.Frame):
     Class Name: View_All_Accounts_UiComposable
     Class Description: This class views all of the user's account information.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
 
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs in View_All_Accounts_UiComposable:", kwargs)
+
+        # Retrieve sidebar control methods from kwargs
+        self.hide_sidebar = kwargs.get('hide_sidebar')
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the tag name that controls what to load
         self.tag = "Social_Media"
         
         # Instantiate the base account ui composable
-        self.ba_ui = Base_AccountInfo_UiComposable(parent=self.parent, controller=self.controller, tag=self.tag)
+        self.ba_ui = Base_AccountInfo_UiComposable(
+            parent=self.parent, 
+            controller=self.controller, 
+            tag=self.tag,
+            hide_sidebar=self.hide_sidebar,
+            show_sidebar=self.show_sidebar
+            )
         
         # Create the main Ui Frame
         self.ba_ui.create_ui_frame()   
@@ -97,21 +123,34 @@ class View_WebService_Accounts_UiComposable(tk.Frame):
     Class Name: View_All_Accounts_UiComposable
     Class Description: This class views all of the user's account information.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
 
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs in View_All_Accounts_UiComposable:", kwargs)
+
+        # Retrieve sidebar control methods from kwargs
+        self.hide_sidebar = kwargs.get('hide_sidebar')
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the tag name that controls what to load
         self.tag = "Web_Service"
         
         # Instantiate the base account ui composable
-        self.ba_ui = Base_AccountInfo_UiComposable(parent=self.parent, controller=self.controller, tag=self.tag)
+        self.ba_ui = Base_AccountInfo_UiComposable(
+            parent=self.parent, 
+            controller=self.controller, 
+            tag=self.tag,
+            hide_sidebar=self.hide_sidebar,
+            show_sidebar=self.show_sidebar
+            )
         
         # Create the main Ui Frame
         self.ba_ui.create_ui_frame()   
@@ -128,21 +167,34 @@ class View_Fiance_Accounts_UiComposable(tk.Frame):
     Class Name: View_All_Accounts_UiComposable
     Class Description: This class views all of the user's account information.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
 
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs in View_All_Accounts_UiComposable:", kwargs)
+
+        # Retrieve sidebar control methods from kwargs
+        self.hide_sidebar = kwargs.get('hide_sidebar')
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the tag name that controls what to load
         self.tag = "Finance"
         
         # Instantiate the base account ui composable
-        self.ba_ui = Base_AccountInfo_UiComposable(parent=self.parent, controller=self.controller, tag=self.tag)
+        self.ba_ui = Base_AccountInfo_UiComposable(
+            parent=self.parent, 
+            controller=self.controller, 
+            tag=self.tag,
+            hide_sidebar=self.hide_sidebar,
+            show_sidebar=self.show_sidebar
+            )
         
         # Create the main Ui Frame
         self.ba_ui.create_ui_frame()   
@@ -159,21 +211,34 @@ class View_Personal_Accounts_UiComposable(tk.Frame):
     Class Name: View_Personal_Accounts_UiComposable
     Class Description: This class views all of the user's account information.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
 
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs in View_All_Accounts_UiComposable:", kwargs)
+
+        # Retrieve sidebar control methods from kwargs
+        self.hide_sidebar = kwargs.get('hide_sidebar')
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the tag name that controls what to load
         self.tag = "Personal"
         
         # Instantiate the base account ui composable
-        self.ba_ui = Base_AccountInfo_UiComposable(parent=self.parent, controller=self.controller, tag=self.tag)
+        self.ba_ui = Base_AccountInfo_UiComposable(
+            parent=self.parent, 
+            controller=self.controller, 
+            tag=self.tag,
+            hide_sidebar=self.hide_sidebar,
+            show_sidebar=self.show_sidebar
+            )
         
         # Create the main Ui Frame
         self.ba_ui.create_ui_frame()   

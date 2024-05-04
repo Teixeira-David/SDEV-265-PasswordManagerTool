@@ -40,13 +40,13 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
     selected_indices = []
     selected_index = 0
     
-    def __init__(self, parent, controller, tag, data=None, frame=None, selected_index=None, *args, **kwargs):
+    def __init__(self, parent, controller, tag, data=None, frame=None, selected_index=None, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """            
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
         self.tag = tag
@@ -54,6 +54,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         self.frame = frame 
         self.selected_data = []
         self.selected_index = selected_index if selected_index is not None else []
+        
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs:", kwargs)
+        self.show_sidebar = kwargs.get('show_sidebar')
 
     def create_ui_frame(self):
         """
@@ -66,10 +70,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             self.parent_ui_frame(600, 500, self.tag)
         else:
             self.parent_ui_frame(600, 550, self.tag)
-        
-        # Call the method to set up the UI elements
-        #self.init_crud_frames()
-        
+
         # Call this method to set up the header frame
         self.create_logo_image()
         
@@ -82,34 +83,6 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Get the generated password
         self.load_generated_password()
-
-    def init_crud_frames(self, frame_to_init='CustomPasswordGen_UiComposable', data=None):
-        """
-        Function Name: init_crud_frames
-        Description: This function creates the frame container stack for the crude UI icons
-        'Add', 'Edit', and 'Delete'.
-        """
-        # Initialize frames dictionary
-        if not hasattr(self, 'crud_frame'):
-            self.crud_frame = {}
-    
-        # Create the frames for the CRUD UI
-        crud_class_frames = {
-            'CustomPasswordGen_UiComposable': CustomPasswordGen_UiComposable
-        }
-
-        # Create only the requested frame for the main UI
-        if frame_to_init and frame_to_init in crud_class_frames:
-            if frame_to_init not in self.crud_frame:  # Check if frame already exists
-                CrudClass = crud_class_frames[frame_to_init]
-                # Instantiate the frame with the provided data or default to None if data isn't provided
-                crud_frame = CrudClass(parent=self.parent, controller=self.controller, data=data or None)
-                self.crud_frame[frame_to_init] = crud_frame
-                self.set_crud_frame(frame_to_init, crud_frame)
-            else:
-                print(f"{frame_to_init} is already initialized.")
-        else:
-            print(f"{frame_to_init} is not a valid frame.")
             
     def create_logo_image(self):
         """
@@ -368,7 +341,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             )
 
         # Debug, make sure to comment this out after testing
-        User.user_id = 1
+        #User.user_id = 1
         
         try:
             
@@ -399,7 +372,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
                     self.clear_entry_widget(self.entry_widget_list)
                     acc_obj.delete_account_data()
                     self.back_btn()
-                    
+                
         except ValueError as e:
             # Handle specific field errors based on message content
             if 'category' in str(e).lower():
@@ -456,7 +429,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
                     # Handle the case where stored data is also None
                     self.selected_data = []
                     return
-
+                
             # Check if self.data is a list of lists or a single list
             if isinstance(self.data[0], tuple):
                 # If self.data is a list of lists, iterate each sublist
@@ -579,7 +552,13 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         print(Add_Edit_Account_UiComposable.selected_indices)
         
         # Load the generate custom frame Ui
-        self.cust_pswrd_gen = CustomPasswordGen_UiComposable(self.parent, self.controller, tag=self.tag, crud_frames=self.frame)
+        self.cust_pswrd_gen = CustomPasswordGen_UiComposable(
+            self.parent, 
+            self.controller, 
+            tag=self.tag, 
+            crud_frames=self.frame, 
+            show_sidebar=self.show_sidebar
+            )
         
     def back_btn(self):
         """ 
@@ -587,16 +566,12 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function is executed once the user clicks on the exit button inside the result
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
         """   
-        # Import the view_account_ui_composable module 
-        from view_account_ui_composable import View_All_Accounts_UiComposable
-        
         # Destroy the widgets
         self.destroy_child_frame()
-        
-        # Load the main dashboard frame
-        self.switch_composable(View_All_Accounts_UiComposable, frame_type='crud')
-        
-            
+        if self.show_sidebar:
+            self.show_sidebar()
+
+
 #######################################################################################################
 # Add Account Information Class
 #######################################################################################################  
@@ -606,24 +581,30 @@ class Add_Accounts_UiComposable(tk.Frame):
     Class Name: Add_Accounts_UiComposable
     Class Description: This class adds an account and composes the base add or edit composable.
     """
-    def __init__(self, parent, controller, data=None, crud_frame=None, *args, **kwargs):
+    def __init__(self, parent, controller, data=None, crud_frame=None, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.parent = parent
         self.controller = controller 
         self.data = data
         self.crud_frame = crud_frame
         self.current_frame = None
+        self.selected_index = 0
+        
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs:", kwargs)
+        self.show_sidebar = kwargs.get('show_sidebar')
 
         # Set the tag name that controls what to load
         self.tag = "Add"
         
         # Delay the UI setup to after the frame is fully initialized
-        self.after(100, self.post_init)
+        #self.after(100, self.post_init)
+        self.post_init()
         
     def post_init(self):
         """
@@ -631,7 +612,15 @@ class Add_Accounts_UiComposable(tk.Frame):
         Description: This function creates the add account UI composable.
         """
         # Attempt to instantiate the base add/edit ui composable
-        self.add_obj = Add_Edit_Account_UiComposable(self.parent, self.controller, self.tag, self.data, self.crud_frame)
+        self.add_obj = Add_Edit_Account_UiComposable(
+            self.parent, 
+            self.controller, 
+            self.tag, 
+            self.data, 
+            self.crud_frame, 
+            self.selected_index, 
+            show_sidebar=self.show_sidebar
+            )
         self.add_obj.create_ui_frame()  
         
     def is_add_obj_created(self):
@@ -660,24 +649,29 @@ class Edit_Accounts_UiComposable(tk.Frame):
     Class Name: Edit_Accounts_UiComposable
     Class Description: This class edits an account and composes the base add or edit composable.
     """
-    def __init__(self, parent, controller, data=None, crud_frame=None, selected_index=None, *args, **kwargs):
+    def __init__(self, parent, controller, data=None, crud_frame=None, selected_index=None, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
         """   
         # Create the root tkinter variable
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent)
         self.controller = controller 
         self.parent = parent
         self.data = data
         self.crud_frame = crud_frame
         self.selected_index = selected_index if selected_index is not None else []
-
+        
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs:", kwargs)
+        self.show_sidebar = kwargs.get('show_sidebar')
+        
         # Set the tag name that controls what to load
         self.tag = "Edit"
         
         # Delay the UI setup to after the frame is fully initialized
-        self.after(100, self.post_init)
+        #self.after(100, self.post_init)
+        self.post_init()
         
     def post_init(self):
         """
@@ -685,7 +679,15 @@ class Edit_Accounts_UiComposable(tk.Frame):
         Description: This function creates the edit account UI composable.
         """
         # Instantiate the base add/edit ui composable
-        self.edit_obj = Add_Edit_Account_UiComposable(self.parent, self.controller, self.tag, self.data, self.crud_frame, self.selected_index)
+        self.edit_obj = Add_Edit_Account_UiComposable(
+            self.parent, 
+            self.controller, 
+            self.tag, 
+            self.data, 
+            self.crud_frame, 
+            self.selected_index, 
+            show_sidebar=self.show_sidebar
+            )
         self.edit_obj.create_ui_frame()        
 
     def destroy_edit_ui(self):

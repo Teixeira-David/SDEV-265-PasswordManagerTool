@@ -421,14 +421,17 @@ class Base_Ui_Methods():
             self.crud_frame[frame_name].set_data(data)
         else:
             print(f"Frame {frame_name} not found.")
-            
-    def switch_composable(self, frame_class, frame_type='standard', data=None, *args, **kwargs):
+
+    def switch_composable(self, frame_class, frame_type='standard', data=None, **kwargs):
         """
         Function Name: switch_composable
         Description: Hides the current frame and replaces it with a new one from the given frame class.
         If the frame already exists, it reuses it instead of creating a new one, making the
         transition more efficient.
         """
+        # Debugging output to print all passed keyword arguments
+        print("Received kwargs:", kwargs)
+        
         # Select the correct frame dictionary based on frame_type
         frames_dict = self.get_crud_frame() if frame_type == 'crud' else self.get_frames()
 
@@ -439,22 +442,20 @@ class Base_Ui_Methods():
         
         # Determine parameters based on frame type
         if frame_type == 'crud':
-            class_params = (self.parent, self.controller, data) + args
+            class_params = (self.parent, self.controller, data)  # Remove data from here
         else:
-            class_params = (self.parent, self.controller) + args
+            class_params = (self.parent, self.controller, data)
 
         # Hide and potentially destroy the current frame if it exists and is visible
         if hasattr(self, 'current_frame') and self.current_frame is not None:
             if frame_type == 'crud':
-                #self.current_frame.pack_forget()
                 self.destroy_child_frame()
             else:
-                #self.current_frame.grid_remove()
                 self.destroy_child_frame()
             print(f"Hid current frame: {type(self.current_frame).__name__}")
 
         # Check if the frame already exists in the dictionary; if not, create and store it
-        if frame_class.__ne__ not in frames_dict:
+        if frame_class not in frames_dict:
             # Create and store the frame in the correct dictionary
             frame_instance = frame_class(*class_params, **kwargs)
             frames_dict[frame_class.__name__] = frame_instance
