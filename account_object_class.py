@@ -34,6 +34,7 @@ class Account(User):
     """
     # Create class variable shared amongst all Account methods
     account_id_list = []   
+    account_id = 0
     
     # Common base class for all Accounts information. Instantiates the base class
     def __init__(self, account_id=0, user_id=0, account_name="", account_username="", account_password="",  account_email="", category="", notes=""):
@@ -103,11 +104,16 @@ class Account(User):
     # setter method 
     @account_name.setter 
     def account_name(self, value): 
-        # The value should be a string and not be empty. Can contain underscores and hyphens.
-        if not isinstance(value, str) or value.isspace():
+        # Check if the value is a string
+        if not isinstance(value, str):
+            raise ValueError('Account name must be a string')
+        # Check if the string is not empty and does not consist solely of spaces
+        if not value or value.isspace():
             raise ValueError('Account name must be a non-empty string')
-        if not re.match(r"^[a-zA-Z0-9_-]+$", value):
-            raise ValueError('Account name must be alphanumeric and can include underscores and hyphens')
+        # Regular expression that allows alphanumeric characters, underscores, hyphens, and spaces
+        if not re.match(r"^[a-zA-Z0-9_\- ]+$", value):
+            raise ValueError('Account name must be alphanumeric and can include underscores, hyphens, and spaces')
+        # Assign the value if all checks are passed
         self._account_name = value
 
     # setter method 
@@ -243,7 +249,39 @@ class Account(User):
 
         # Result should contain the max id or None if no records exist
         return max_id if max_id is not None else 0
-            
+
+    def get_account_id(self):
+        """ 
+        Function Name: get_account_id
+        Function Description: This function gets the account id from the database
+        """   
+        # Set the table and column names
+        table = 'TAccounts'
+        appname_col = 'strAppName'
+        username_col = 'strAppUserName'
+        email_col = 'strAppEmail'
+        id_col = 'intAccountID'
+        
+        # SQL to fetch id for the given params
+        sql = f"""
+                SELECT 
+                    {id_col}
+                FROM 
+                    {table}
+                WHERE 
+                    {appname_col}=? AND {username_col}=? AND {email_col}=?
+                """
+
+        # Execute the query to get the id
+        db_qh = Database_Query_Handler()
+        result = db_qh.get_target_db_record(sql, (self.account_name, self.username, self.user_email))
+
+        # Result should contain the user id
+        if result is not None:
+            Account.account_id = result
+        else:
+            self.account_id = 0
+    
     def add_new_account(self):
         """ 
         Function Name: add_new_account
@@ -323,7 +361,7 @@ class Account(User):
             'Edit Account Registration',
         ]
         prim_id = 'intAccountID'
-        key_id = self.account_id
+        key_id = Account.account_id
         
         # Package parameters
         params = (table_name, table_col_list, table_values_list, prim_id, key_id)

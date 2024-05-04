@@ -270,18 +270,23 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: get_selected_items_data
         Description: Retrieves data for all items selected in the Treeview.
         """
-        # Get all selected item IDs
-        selected_items = self.selected_items  
-        # List to store data of all selected items
-        all_selected_data = []  
-
-        # Loop through each selected item and fetch its data
-        for item_id in selected_items:
-            item_data = self.tree.item(item_id, 'values')  
-            all_selected_data.append(item_data)
-            #print("Data for item {}: {}".format(item_id, item_data))  # Debug to view the data selected
-
-        return all_selected_data
+        # Get the item IDs of the selected items
+        self.selected_items = self.tree.selection()
+        # Clear previous selections
+        self.selected_indices = []
+        self.all_selected_data = []
+        
+        # Store index of each selected item
+        for i, item in enumerate(self.selected_items):
+            item_data = self.tree.item(item, 'values')
+            self.all_selected_data.append(item_data)
+            self.selected_indices.append(self.tree.index(item))
+            self.selected_indices[i] += 1
+            # Debug: Print selected indices to verify
+            print("Data for item {}: {}".format(item, item_data))  # Debug to view the data selected
+            print("Selected indices:", self.selected_indices)
+            
+        return self.all_selected_data
 
     def destroy_all_composable(self):
         """ 
@@ -324,7 +329,7 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Call the composable
         self.destroy_all_composable()
-        self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud', data=data)
+        self.switch_composable(Edit_Accounts_UiComposable, frame_type='crud', data=data, selected_index=self.selected_indices)
 
     def convert_selected_data(self, data):
         """ 

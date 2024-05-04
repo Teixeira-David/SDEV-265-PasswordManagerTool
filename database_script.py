@@ -2015,11 +2015,11 @@ class Database_Management_Handler(Database_Connection_Handler):
         
         # Test data passwords
         pswrd_list_plain_text = [
-            'fbpass456', 
-            'twitterpass789', 
-            'googlepass789', 
-            'pncpass789', 
-            'fitbitpass789'
+            'fbpasS456@', 
+            'twitterpasS789@', 
+            'googlepasS789@', 
+            'pncpasS789@', 
+            'fitbitpasS789@'
         ]
         
         # Get the key for encrypting the password

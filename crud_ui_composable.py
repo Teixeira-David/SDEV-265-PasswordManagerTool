@@ -37,9 +37,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
     Class Description: This class is the to add a new user to the application.
     """
     stored_selected_data = []
+    selected_indices = []
     selected_index = 0
     
-    def __init__(self, parent, controller, tag, data=None, frame=None, *args, **kwargs):
+    def __init__(self, parent, controller, tag, data=None, frame=None, selected_index=None, *args, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
@@ -52,6 +53,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         self.data = data if data is not None else []
         self.frame = frame 
         self.selected_data = []
+        self.selected_index = selected_index if selected_index is not None else []
 
     def create_ui_frame(self):
         """
@@ -369,9 +371,9 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         User.user_id = 1
         
         try:
+            
             # Attempt to create a Account object with the provided credentials
             acc_obj = Account(
-                account_id=Add_Edit_Account_UiComposable.selected_index + 1,
                 user_id=User.user_id,
                 account_name=input_list[account_name_idx], 
                 account_username=input_list[username_idx], 
@@ -444,20 +446,41 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         """ 
         Function Name: convert_data
         Function Purpose: This function is converts the data passed to only represent the user name and app name
-        """      
-        if self.data is not None and len(self.data) > 0:
-            for data in self.data:
-                self.selected_data.append(data[0] + " - " + data[1])
-        else:
-            self.data = Add_Edit_Account_UiComposable.stored_selected_data
-            for data in self.data:
-                self.selected_data.append(data[0] + " - " + data[1])
+        """     
+        if self.tag == "Edit":
+            # Initial check for self.data
+            if self.data is None or len(self.data) == 0:
+                # Attempt to assign stored data, check if it is not None
+                self.data = Add_Edit_Account_UiComposable.stored_selected_data
+                if self.data is None:
+                    # Handle the case where stored data is also None
+                    self.selected_data = []
+                    return
 
+            # Check if self.data is a list of lists or a single list
+            if isinstance(self.data[0], tuple):
+                # If self.data is a list of lists, iterate each sublist
+                for data in self.data:
+                    if len(data) >= 2:
+                        # Convert each data item to string before concatenation
+                        self.selected_data.append(str(data[0]) + " - " + str(data[1]))
+                    else:
+                        # Handle cases where sublist does not have at least two items
+                        self.selected_data.append("Incomplete Data")
+            else:
+                # If self.data is a single list, make sure it has at least two elements
+                if len(self.data) >= 2:
+                    # Convert each data item to string before concatenation
+                    self.selected_data.append(str(self.data[0]) + " - " + str(self.data[1]))
+                else:
+                    # Handle case where there aren't enough elements
+                    self.selected_data.append("Incomplete Data")
+                    
     def populate_fields(self):
         """
         Function Name: populate_fields
         Description: Populate the entry fields based on the selected item in the dropdown.
-        """
+        """        
         # Get the index of the selected item
         if self.items_selected_drop.get() is not None and len(self.items_selected_drop.get()) > 0:
             Add_Edit_Account_UiComposable.selected_index = self.items_selected_drop.current()
@@ -466,8 +489,14 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
 
         # Check if an item is selected
         if Add_Edit_Account_UiComposable.selected_index >= 0:
-            # Get the data tuple for the selected index
-            selected_item = self.data[Add_Edit_Account_UiComposable.selected_index]
+            # Check if self.data is a list of lists or a single list
+            if isinstance(self.data[0], tuple):
+                # Get the data tuple for the selected index
+                selected_item = self.data[Add_Edit_Account_UiComposable.selected_index]
+                Add_Edit_Account_UiComposable.selected_indices = self.selected_index
+            else:
+                # If self.data is a single list, make sure it has at least two elements
+                selected_item = self.data
 
             # Set the config state to normal
             for entry in self.entry_widget_list:
@@ -500,6 +529,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             category = selected_item[5].replace("_", " ")
             self.category_drop.set(category)
 
+            # Create the account instance
+            acc_obj = Account(account_name=selected_item[0], account_username=selected_item[1], account_password=selected_item[3], account_email=selected_item[2])
+            acc_obj.get_account_id()
+            
         else:
             messagebox.showerror("Selection Error", "No item selected or available for editing.")
 
@@ -542,6 +575,8 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         
         Add_Edit_Account_UiComposable.stored_selected_data = self.controller.shared_data.get('selected_data')
         print(Add_Edit_Account_UiComposable.stored_selected_data)
+        Add_Edit_Account_UiComposable.selected_indices = self.selected_index
+        print(Add_Edit_Account_UiComposable.selected_indices)
         
         # Load the generate custom frame Ui
         self.cust_pswrd_gen = CustomPasswordGen_UiComposable(self.parent, self.controller, tag=self.tag, crud_frames=self.frame)
@@ -625,7 +660,7 @@ class Edit_Accounts_UiComposable(tk.Frame):
     Class Name: Edit_Accounts_UiComposable
     Class Description: This class edits an account and composes the base add or edit composable.
     """
-    def __init__(self, parent, controller, data=None, crud_frame=None,*args, **kwargs):
+    def __init__(self, parent, controller, data=None, crud_frame=None, selected_index=None, *args, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
@@ -636,6 +671,7 @@ class Edit_Accounts_UiComposable(tk.Frame):
         self.parent = parent
         self.data = data
         self.crud_frame = crud_frame
+        self.selected_index = selected_index if selected_index is not None else []
 
         # Set the tag name that controls what to load
         self.tag = "Edit"
@@ -649,7 +685,7 @@ class Edit_Accounts_UiComposable(tk.Frame):
         Description: This function creates the edit account UI composable.
         """
         # Instantiate the base add/edit ui composable
-        self.edit_obj = Add_Edit_Account_UiComposable(self.parent, self.controller, self.tag, self.data, self.crud_frame)
+        self.edit_obj = Add_Edit_Account_UiComposable(self.parent, self.controller, self.tag, self.data, self.crud_frame, self.selected_index)
         self.edit_obj.create_ui_frame()        
 
     def destroy_edit_ui(self):
