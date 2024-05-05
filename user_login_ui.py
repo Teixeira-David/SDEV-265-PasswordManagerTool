@@ -114,7 +114,7 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         Button(self.ui_frame, text="Exit", width=10, command=self.exit_app_btn).place(relx=0.3, y=340, anchor="center")
         Button(self.ui_frame, text="New", width=10, command=self.add_new_user_btn).place(relx=0.5, y=340, anchor="center")
         Button(self.ui_frame, text="Submit", width=10, command=self.submit_btn).place(relx=0.7, y=340, anchor="center")
-                                                                                                            
+                                                                                                    
     def get_user_input(self):
         """ 
         Function Name: get_user_input
@@ -227,6 +227,7 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         # Call the methods to set labels, entry fields, and buttons within this ui_frame 
         self.create_labels()
         self.create_entry_fields()
+        self.config_entry_fields()
         self.create_buttons()
 
     def create_logo_image(self):
@@ -280,7 +281,24 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
             self.second_password_entry, 
             self.email_entry
             ]
-        
+
+    def config_entry_fields(self):
+        """
+        Function Name: config_entry_fields
+        Description: This function configures the entry fields for the main UI
+        """
+        # Set the placeholder text for the entry fields
+        placeholders = {
+            self.username_entry: "e.g. janedoe123",
+            self.email_entry: "e.g. your_email@gmail.com",
+        }
+        # Ensure the placeholder text is displayed in the entry fields
+        for entry, placeholder in placeholders.items():
+            entry.insert(0, placeholder)
+            entry.config(fg='grey')
+            entry.bind("<FocusIn>", lambda event, e=entry, ph=placeholder: self.on_entry_click(event, e, ph))
+            entry.bind("<FocusOut>", lambda event, e=entry, ph=placeholder: self.on_focus_out(event, e, ph))
+
     def create_buttons(self):
         """
         Function Name: create_buttons
@@ -391,7 +409,7 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         # Delete the content of the entry widgets
         self.clear_entry_widget(self.entry_widget_list)
         self.set_bg_to_white(self.entry_widget_list)
-        
+        self.config_entry_fields()
         # Return focus to first input
         self.entry_widget_list[0].focus()
     

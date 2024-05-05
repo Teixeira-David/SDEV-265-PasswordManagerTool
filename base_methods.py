@@ -54,11 +54,15 @@ class Base_Ui_Methods():
         else:
             # Create a frame with the specified tag
             parent_frame = self
-            
+        
         # Adjust the size as needed
         self.ui_frame = Frame(parent_frame, width=frame_width, height=frame_height, bg=bg_color)  
         self.ui_frame.pack_propagate(False)  # Prevents the frame from resizing to fit its contents
-        self.ui_frame.place(relx=0.5, rely=0.5, anchor="center")  # Center the frame within the main_container
+        # Check if ui_frame exists and is not None before trying to position it
+        if hasattr(self, 'ui_frame') and self.ui_frame is not None:
+            self.ui_frame.place(relx=0.5, rely=0.5, anchor="center")
+        else:
+            print("Attempted to position a non-existent or destroyed ui_frame.")
         
     def create_med_center_image_canvas(self, image_path, canvas_width, canvas_height, image_width, image_height, padding=20, tag=None):
         """
@@ -154,11 +158,15 @@ class Base_Ui_Methods():
         Function Name: position_ui_frame
         Description: Creates a fixed-size frame for UI elements.
         """
-        # Center ui_frame every time the window resizes
-        self.ui_frame.place(relx=0.5, rely=0.5, anchor="center")
-        
-        # Optionally, rebind the resize event to a new method that re-centers ui_frame
-        self.bind("<Configure>", self.on_window_resize)
+        # Center ui_frame every time the window resizes, if it exists
+        if hasattr(self, 'ui_frame') and self.ui_frame is not None:
+            self.ui_frame.place(relx=0.5, rely=0.5, anchor="center")
+            # Ensure the resize event is properly bound to re-center the frame
+            self.bind("<Configure>", self.on_window_resize)
+        else:
+            print("Attempted to position a non-existent or destroyed ui_frame.")
+            # Unbind the resize event if ui_frame does not exist to prevent errors
+            self.unbind("<Configure>")
 
     def on_window_resize(self, event=None):
         """
@@ -422,6 +430,55 @@ class Base_Ui_Methods():
         else:
             print(f"Frame {frame_name} not found.")
 
+    # def switch_composable(self, frame_class, frame_type='standard', data=None, **kwargs):
+    #     """
+    #     Function Name: switch_composable
+    #     Description: Hides the current frame and replaces it with a new one from the given frame class.
+    #     If the frame already exists, it reuses it instead of creating a new one, making the
+    #     transition more efficient.
+    #     """
+    #     # Debugging output to print all passed keyword arguments
+    #     print("Received kwargs:", kwargs)
+        
+    #     # Select the correct frame dictionary based on frame_type
+    #     frames_dict = self.get_crud_frame() if frame_type == 'crud' else self.get_frames()
+
+    #     # Make sure frame_class is a callable class reference
+    #     if not callable(frame_class):
+    #         print(f"Invalid frame class: {frame_class}")
+    #         return
+        
+    #     # Determine parameters based on frame type
+    #     if frame_type == 'crud':
+    #         class_params = (self.parent, self.controller, data)  # Remove data from here
+    #     else:
+    #         class_params = (self.parent, self.controller, data)
+
+    #     # Hide and potentially destroy the current frame if it exists and is visible
+    #     if hasattr(self, 'current_frame') and self.current_frame is not None:
+    #         if frame_type == 'crud':
+    #             self.destroy_child_frame()
+    #         else:
+    #             self.destroy_child_frame()
+    #         print(f"Hid current frame: {type(self.current_frame).__name__}")
+
+    #     # Check if the frame already exists in the dictionary; if not, create and store it
+    #     if frame_class not in frames_dict:
+    #         # Create and store the frame in the correct dictionary
+    #         frame_instance = frame_class(*class_params, **kwargs)
+    #         frames_dict[frame_class.__name__] = frame_instance
+    #         print(f"Created new frame: {frame_class.__name__}")
+
+    #     # Update the current_frame to the new one from the correct dictionary
+    #     self.current_frame = frames_dict[frame_class.__name__]
+
+    #     # Show the new frame
+    #     if frame_type == 'crud':
+    #         self.current_frame.pack(fill='both', expand=True)
+    #     else:
+    #         self.current_frame.grid(row=0, column=0, sticky="nsew")
+    #     print(f"Loaded frame: {frame_class.__name__}")
+
     def switch_composable(self, frame_class, frame_type='standard', data=None, **kwargs):
         """
         Function Name: switch_composable
@@ -441,17 +498,11 @@ class Base_Ui_Methods():
             return
         
         # Determine parameters based on frame type
-        if frame_type == 'crud':
-            class_params = (self.parent, self.controller, data)  # Remove data from here
-        else:
-            class_params = (self.parent, self.controller, data)
+        class_params = (self.parent, self.controller, data)
 
         # Hide and potentially destroy the current frame if it exists and is visible
         if hasattr(self, 'current_frame') and self.current_frame is not None:
-            if frame_type == 'crud':
-                self.destroy_child_frame()
-            else:
-                self.destroy_child_frame()
+            self.current_frame.pack_forget() if frame_type == 'crud' else self.current_frame.grid_remove()
             print(f"Hid current frame: {type(self.current_frame).__name__}")
 
         # Check if the frame already exists in the dictionary; if not, create and store it
@@ -464,11 +515,8 @@ class Base_Ui_Methods():
         # Update the current_frame to the new one from the correct dictionary
         self.current_frame = frames_dict[frame_class.__name__]
 
-        # Show the new frame
-        if frame_type == 'crud':
-            self.current_frame.pack(fill='both', expand=True)
-        else:
-            self.current_frame.grid(row=0, column=0, sticky="nsew")
+        # Show the new frame using grid only
+        self.current_frame.grid(row=0, column=0, sticky="nsew")
         print(f"Loaded frame: {frame_class.__name__}")
 
     def destroy_all_composable(self):

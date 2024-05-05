@@ -108,7 +108,7 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.file_menu.add_command(label="New", command=self.new_menu_btn)
         self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit", command=self.quit)
+        self.file_menu.add_command(label="Logout", command=self.quit)
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
 
         # Add 'Edit' menu

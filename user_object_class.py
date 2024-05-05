@@ -190,6 +190,8 @@ class User(Database_Query_Handler, Database_Management_Handler):
             
         # Verify the user-provided password against the hashed password
         if PasswordWithPolicy.verify_password(self.user_password, hashed_password):
+            # Get the user ID
+            self.get_user_id()
             self.delete_user_data()
             return True
         else:
@@ -213,7 +215,7 @@ class User(Database_Query_Handler, Database_Management_Handler):
         for i in result:
             if self.username in i:
                 return False
-            
+        
         return True
         
     def add_new_user(self):

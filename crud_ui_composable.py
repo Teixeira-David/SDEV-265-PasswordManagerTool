@@ -26,6 +26,7 @@ from base_methods import Base_Ui_Methods
 from account_object_class import Account
 from generate_password_ui import CustomPasswordGen_UiComposable
 from user_object_class import User
+from account_datatype_model import Crud_Account_Data
 
 #######################################################################################################
 # Add or Edit Account Info Class
@@ -129,7 +130,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: This function creates the entry fields for the main UI
         """
         # Drop values
-        category_values = ["Social Media", "Web Services", "Finance", "Personal"]
+        category_values = ["Social_Media", "Web_Services", "Finance", "Personal"]
         entry_labels = ['AppName', 'Username', 'First Password', 'Second Password', 'Email', 'Hint']
         entry_widths = [30, 30, 30, 30, 30, (45, 3)]  # Ensure there's an entry width for each label
 
@@ -204,24 +205,27 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
                 self.gen_btn.config(state='disabled')
                 self.items_selected_drop.config(state='readonly')
         else:
-            # Set the placeholder text for the entry fields
-            placeholders = {
-                self.appname_entry: "e.g. Facebook, Twitter, etc.",
-                self.username_entry: "e.g. johndoe123",
-                self.email_entry: "e.g. youremail@gmail.com",
-            }
-            # Ensure the placeholder text is displayed in the entry fields
-            for entry, placeholder in placeholders.items():
-                entry.insert(0, placeholder)
-                entry.config(fg='grey')
-                entry.bind("<FocusIn>", lambda event, e=entry, ph=placeholder: self.on_entry_click(event, e, ph))
-                entry.bind("<FocusOut>", lambda event, e=entry, ph=placeholder: self.on_focus_out(event, e, ph))
+            if self.data:
+                self.populate_fields()
+            else:
+                # Set the placeholder text for the entry fields
+                placeholders = {
+                    self.appname_entry: "e.g. Facebook, Twitter, etc.",
+                    self.username_entry: "e.g. johndoe123",
+                    self.email_entry: "e.g. your_email@gmail.com",
+                }
+                # Ensure the placeholder text is displayed in the entry fields
+                for entry, placeholder in placeholders.items():
+                    entry.insert(0, placeholder)
+                    entry.config(fg='grey')
+                    entry.bind("<FocusIn>", lambda event, e=entry, ph=placeholder: self.on_entry_click(event, e, ph))
+                    entry.bind("<FocusOut>", lambda event, e=entry, ph=placeholder: self.on_focus_out(event, e, ph))
 
-            # Special handling for the Text widget for hint
-            self.hint_entry.insert("1.0", "Add any additional notes or hints here...")
-            self.hint_entry.config(fg='grey')
-            self.hint_entry.bind("<FocusIn>", lambda event, e=self.hint_entry, ph="Add any additional notes or hints here...": self.on_entry_click(event, e, ph))
-            self.hint_entry.bind("<FocusOut>", lambda event, e=self.hint_entry, ph="Add any additional notes or hints here...": self.on_focus_out(event, e, ph))
+                # Special handling for the Text widget for hint
+                self.hint_entry.insert("1.0", "Add any additional notes or hints here...")
+                self.hint_entry.config(fg='grey')
+                self.hint_entry.bind("<FocusIn>", lambda event, e=self.hint_entry, ph="Add any additional notes or hints here...": self.on_entry_click(event, e, ph))
+                self.hint_entry.bind("<FocusOut>", lambda event, e=self.hint_entry, ph="Add any additional notes or hints here...": self.on_focus_out(event, e, ph))
 
     def create_buttons(self):
         """
@@ -251,6 +255,8 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         item_selected = self.items_selected_drop.get() if self.tag != "Add" else None
         category = self.category_drop.get()
         appname = self.appname_entry.get()
+        capitalized_words = [word.capitalize() for word in appname.split()]
+        capitalized_appname = ' '.join(capitalized_words)
         username = self.username_entry.get()
         first_password = self.first_password_entry.get()
         second_password = self.second_password_entry.get()
@@ -258,9 +264,26 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Get the text input from the hint entry
         hint = self.hint_entry.get("1.0", "end-1c")
+        if hint == "Add any additional notes or hints here...":
+            hint = ""
+        if email == "e.g. your_email@gmail.com":
+            email = ""
+        if username == "e.g. johndoe123":
+            username = ""
+
+        # Creating an instance of AccountData with the captured inputs
+        account_data = Crud_Account_Data(
+            category=category,
+            app_name=capitalized_appname,
+            username=username,
+            password=first_password,
+            email=email,
+            hint=hint,
+        )
+        self.data_model_results = account_data.get_all_data()
 
         # Create a user object entry list of the input values
-        return [item_selected, category, appname, username, first_password, second_password, email, hint]
+        return [item_selected, category, capitalized_appname, username, first_password, second_password, email, hint]
 
     def validate_drop_inputs(self):
         """
@@ -339,7 +362,11 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             "category it's associated with. \n\n"
             "Do you want to proceed with these changes?"
             )
-
+        proceed_with_other_item_msg = (
+            f"You have {'added' if self.tag == 'Add' else 'edited'} the account named '{input_list[1]}' under the category '{input_list[0]}'.\n\n"
+            f"This account can now be managed through this tool. Would you like to {'add another' if self.tag == 'Add' else 'edit another'} account?"
+        )
+        
         # Debug, make sure to comment this out after testing
         #User.user_id = 1
         
@@ -363,7 +390,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
                     acc_obj.add_new_account()
                     self.clear_entry_widget(self.entry_widget_list)
                     acc_obj.delete_account_data()
-                    self.back_btn()
+                    if messagebox.askyesno("Continue Adding Other Items", proceed_with_other_item_msg):
+                        pass
+                    else:
+                        self.back_btn()
             else:
                 # Make sure to get the user acceptance to edit the selected account
                 response = messagebox.askyesno("Confirm Edit Account", edit_message)
@@ -371,7 +401,10 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
                     acc_obj.edit_account()
                     self.clear_entry_widget(self.entry_widget_list)
                     acc_obj.delete_account_data()
-                    self.back_btn()
+                    if messagebox.askyesno("Continue Edits Of Other Items", proceed_with_other_item_msg):
+                        pass
+                    else:
+                        self.back_btn()
                 
         except ValueError as e:
             # Handle specific field errors based on message content
@@ -454,60 +487,63 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: populate_fields
         Description: Populate the entry fields based on the selected item in the dropdown.
         """        
-        # Get the index of the selected item
-        if self.items_selected_drop.get() is not None and len(self.items_selected_drop.get()) > 0:
-            Add_Edit_Account_UiComposable.selected_index = self.items_selected_drop.current()
-        else: 
-            self.convert_data()
+        if self.tag == "Edit":
+            # Get the index of the selected item
+            if self.items_selected_drop.get() is not None and len(self.items_selected_drop.get()) > 0:
+                Add_Edit_Account_UiComposable.selected_index = self.items_selected_drop.current()
+            else: 
+                self.convert_data()
 
-        # Check if an item is selected
-        if Add_Edit_Account_UiComposable.selected_index >= 0:
-            # Check if self.data is a list of lists or a single list
-            if isinstance(self.data[0], tuple):
-                # Get the data tuple for the selected index
-                selected_item = self.data[Add_Edit_Account_UiComposable.selected_index]
-                Add_Edit_Account_UiComposable.selected_indices = self.selected_index
-            else:
-                # If self.data is a single list, make sure it has at least two elements
-                selected_item = self.data
+        # Check if an item is selected and self.data is not None
+        if Add_Edit_Account_UiComposable.selected_index >= 0 and self.data is not None:
+            # Check if self.data is a list of lists or a single list and if it contains data
+            if isinstance(self.data, list) and len(self.data) > 0:
+                if isinstance(self.data[0], tuple):
+                    # Get the data tuple for the selected index
+                    selected_item = self.data[Add_Edit_Account_UiComposable.selected_index]
+                    Add_Edit_Account_UiComposable.selected_indices = self.selected_index
+                else:
+                    # If self.data is a single list, make sure it has at least two elements
+                    selected_item = self.data
 
-            # Set the config state to normal
-            for entry in self.entry_widget_list:
-                entry.config(state='normal')
+                # Set the config state to normal
+                for entry in self.entry_widget_list:
+                    entry.config(state='normal')
+                    
+                # Set the buttons to normal
+                self.show_btn.config(state='normal')
+                self.gen_btn.config(state='normal')
                 
-            # Set the buttons to normal
-            self.show_btn.config(state='normal')
-            self.gen_btn.config(state='normal')
-            
-            # Clear existing entries
-            self.appname_entry.delete(0, END)
-            self.username_entry.delete(0, END)
-            self.email_entry.delete(0, END)
-            self.hint_entry.delete("1.0", END)
-            
-            # Insert the data into the fields
-            if self.controller.shared_data.get('generated_password'):
-                self.load_generated_password()
-                self.appname_entry.insert(0, selected_item[0])
-                self.username_entry.insert(0, selected_item[1])
-                self.email_entry.insert(0, selected_item[2])
-            else:
-                self.appname_entry.insert(0, selected_item[0])
-                self.username_entry.insert(0, selected_item[1])
-                self.first_password_entry.insert(0, selected_item[3])
-                self.second_password_entry.insert(0, selected_item[3])
-                self.email_entry.insert(0, selected_item[2])
-            
-            # Replace the underscore with a space
-            category = selected_item[5].replace("_", " ")
-            self.category_drop.set(category)
-
-            # Create the account instance
-            acc_obj = Account(account_name=selected_item[0], account_username=selected_item[1], account_password=selected_item[3], account_email=selected_item[2])
-            acc_obj.get_account_id()
-            
+                # Clear existing entries
+                self.appname_entry.delete(0, END)
+                self.username_entry.delete(0, END)
+                self.email_entry.delete(0, END)
+                self.hint_entry.delete("1.0", END)
+                
+                # Insert the data into the fields
+                if self.controller.shared_data.get('generated_password'):
+                    self.load_generated_password()
+                    self.appname_entry.insert(0, selected_item[0])
+                    self.username_entry.insert(0, selected_item[1])
+                    self.email_entry.insert(0, selected_item[2])
+                else:
+                    self.appname_entry.insert(0, selected_item[0])
+                    self.username_entry.insert(0, selected_item[1])
+                    self.first_password_entry.insert(0, selected_item[3])
+                    self.second_password_entry.insert(0, selected_item[3])
+                    self.email_entry.insert(0, selected_item[2])
+                
+                # Replace the underscore with a space
+                #category = selected_item[5].replace("_", " ")
+                #self.category_drop.set(category)
+                self.category_drop.set(selected_item[5])
+                
+                # Create the account instance
+                acc_obj = Account(account_name=selected_item[0], account_username=selected_item[1], account_password=selected_item[3], account_email=selected_item[2])
+                acc_obj.get_account_id()
+                
         else:
-            messagebox.showerror("Selection Error", "No item selected or available for editing.")
+            messagebox.showerror("Selection Error", "No item selected or available for editing or data is not loaded.")
 
     def clear_entry(self):
         """ 
@@ -520,9 +556,14 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         
         # Return focus to first input
         if self.tag == "Add":
+            self.data = None
+            self.config_entry_fields()
+            self.category_drop.set('')
             self.category_drop.focus()
         else:
+            self.data = None
             self.config_entry_fields()
+            self.category_drop.set('')
             self.items_selected_drop.focus()
     
     def show_password_btn(self):
@@ -542,20 +583,23 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Purpose: This function is executed once the user clicks on the exit button inside the result
         frame. If the user clicks 'Back', the widow is destroyed and the user is sent back to the previous page 
         """   
+        account_data = self.get_user_input()
+            
         # Hide the current frame    
         #self.hide_child_frame()
         self.destroy_child_frame()
         
-        Add_Edit_Account_UiComposable.stored_selected_data = self.controller.shared_data.get('selected_data')
+        Add_Edit_Account_UiComposable.stored_selected_data = self.data #self.controller.shared_data.get('selected_data')
         print(Add_Edit_Account_UiComposable.stored_selected_data)
         Add_Edit_Account_UiComposable.selected_indices = self.selected_index
         print(Add_Edit_Account_UiComposable.selected_indices)
         
         # Load the generate custom frame Ui
         self.cust_pswrd_gen = CustomPasswordGen_UiComposable(
-            self.parent, 
-            self.controller, 
+            parent=self.parent, 
+            controller=self.controller, 
             tag=self.tag, 
+            data=self.data_model_results,
             crud_frames=self.frame, 
             show_sidebar=self.show_sidebar
             )
@@ -603,8 +647,8 @@ class Add_Accounts_UiComposable(tk.Frame):
         self.tag = "Add"
         
         # Delay the UI setup to after the frame is fully initialized
-        #self.after(100, self.post_init)
-        self.post_init()
+        self.after(100, self.post_init)
+        #self.post_init()
         
     def post_init(self):
         """
@@ -623,22 +667,15 @@ class Add_Accounts_UiComposable(tk.Frame):
             )
         self.add_obj.create_ui_frame()  
         
-    def is_add_obj_created(self):
-        """
-        Function Name: is_add_obj_created
-        Function Purpose: Checks if the 'add_obj' attribute has been instantiated and still exists.
-        Returns:
-            bool: True if 'add_obj' is instantiated and not destroyed, False otherwise.
-        """
-        return self.is_existing
-
     def destroy_add_ui(self):
         """ 
         Function Name: destroy_add_ui
         Function Purpose: This function destroys the add account UI composable. 
         """    
         # Destroy the widgets
-        self.add_obj.destroy_child_frame()
+        #self.add_obj.destroy_child_frame()
+        self.add_obj.hide_child_frame()
+        
         
 #######################################################################################################
 # Edit Account Information Class
@@ -670,8 +707,8 @@ class Edit_Accounts_UiComposable(tk.Frame):
         self.tag = "Edit"
         
         # Delay the UI setup to after the frame is fully initialized
-        #self.after(100, self.post_init)
-        self.post_init()
+        self.after(100, self.post_init)
+        #self.post_init()
         
     def post_init(self):
         """
@@ -696,4 +733,5 @@ class Edit_Accounts_UiComposable(tk.Frame):
         Function Purpose: This function destroys the edit account UI composable.  
         """    
         # Destroy the widgets
-        self.edit_obj.destroy_child_frame()
+        #self.edit_obj.destroy_child_frame()
+        self.add_obj.hide_child_frame()

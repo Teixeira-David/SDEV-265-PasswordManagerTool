@@ -337,6 +337,9 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
             show_sidebar=self.show_sidebar
             )
         
+        # Refresh the treeview or the display to show the updated state
+        self.get_db_data()
+        
     def edit_account_composable(self):
         """ 
         Function Name: edit_account_composable
@@ -370,6 +373,9 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
             show_sidebar=self.show_sidebar
             )
 
+        # Refresh the treeview or the display to show the updated state
+        self.get_db_data() 
+        
     def convert_selected_data(self, data):
         """ 
         Function Name: convert_selected_data

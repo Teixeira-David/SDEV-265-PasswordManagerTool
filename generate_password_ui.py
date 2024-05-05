@@ -38,7 +38,7 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
     Class Description: This class is the custom password generator page of the program where the user 
     can create a custom password based of provided parameters.
     """
-    def __init__(self, parent, controller, tag=None, **kwargs):
+    def __init__(self, parent, controller, tag=None, data=None, **kwargs):
         """ 
         Function Name: __init__
         Function Purpose: Instantiate the class objects and attributes for the Tkinter GUI
@@ -48,6 +48,7 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
         self.parent = parent
         self.controller = controller # Set the controller object for direction flow
         self.tag = tag
+        self.data = data
         self.controller.shared_data = {'generated_password': None}  # Initializing shared data
         
         # Debugging output to print all passed keyword arguments
@@ -308,7 +309,7 @@ class CustomPasswordGen_UiComposable(tk.Frame, Base_Ui_Methods):
             # Assuming 'Add_Accounts_UiComposable' was initialized and managed by the controller
             #self.destroy_child_frame()
             self.hide_child_frame()
-            self.switch_composable(Add_Accounts_UiComposable, frame_type='crud', show_sidebar=self.show_sidebar)
+            self.switch_composable(Add_Accounts_UiComposable, frame_type='crud', data=self.data, show_sidebar=self.show_sidebar)
         elif self.tag == "Edit":
             # Import the class at the top of the file if it's not already imported
             from crud_ui_composable import Edit_Accounts_UiComposable 
