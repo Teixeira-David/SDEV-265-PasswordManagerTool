@@ -107,8 +107,8 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
         dash.create_ui_frame()  # Setup the MainDashboard
         
         # Show initial frame
-        #self.show_grid_frame("MainDashboard_UiComposable")
-        self.show_grid_frame("UserLogin_UiComposable")
+        self.show_grid_frame("MainDashboard_UiComposable")
+        #self.show_grid_frame("UserLogin_UiComposable")
     
 def init_primary_boot_methods():
     """ 
