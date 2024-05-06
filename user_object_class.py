@@ -15,9 +15,7 @@ for the most up-to-date version.
 from pyisemail import is_email
 import re
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
-import tkinter as tk
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from dateutil import parser
 
 # Import project modules
@@ -94,9 +92,11 @@ class User(Database_Query_Handler, Database_Management_Handler):
         if not isinstance(value, str) or value.isspace():
             self.delete_user_data()
             raise ValueError('Password cannot be empty')
+        
         # Validate the password based off password policy
         pp = PasswordWithPolicy()
         pp.assess_password_strength(value)
+        
         # If the password is valid, proceed. If not, raise an error and user needs a new password
         if pp.get_password_validation_status() == True:
             self._user_password = value
@@ -246,6 +246,7 @@ class User(Database_Query_Handler, Database_Management_Handler):
         
         # Package parameters
         params = (table_name, table_col_list, table_values_list, prim_id)
+        
         # Call insert_or_update_values with the prepared parameters
         self.insert_or_update_values(params)
         

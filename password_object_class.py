@@ -16,14 +16,12 @@ import configparser
 import bcrypt
 from cryptography.fernet import Fernet
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import random
 import string
 
 # Import project modules
-
 
 
 #######################################################################################################

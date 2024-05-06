@@ -12,7 +12,7 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 #######################################################################################################
 # Data Model Class

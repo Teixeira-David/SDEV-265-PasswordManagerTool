@@ -12,17 +12,11 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-import re
 import sys
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
 import tkinter as tk
-from datetime import date, datetime, timedelta
-from PIL import Image, ImageTk
 
 # Import project modules
-from user_object_class import User
-from password_object_class import PasswordWithPolicy
 from base_methods import Base_Ui_Methods
 from user_login_ui import UserLogin_UiComposable, AddNewUser_UiComposable
 from database_script import Database, Database_File_Handler
@@ -91,7 +85,7 @@ class Main_UiComposable(tk.Tk, Base_Ui_Methods):
             UserLogin_UiComposable, 
             AddNewUser_UiComposable, 
             CustomPasswordGen_UiComposable,
-            MainDashboard_UiComposable  # Assuming MainDashboard_UiComposable is a frame to be managed
+            MainDashboard_UiComposable
         ]
 
         # Initialize frames

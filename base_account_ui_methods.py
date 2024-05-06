@@ -12,13 +12,10 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-import re
-import sys
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
+from tkinter import messagebox, ttk
 import tkinter as tk
 from tkinter.font import Font
-from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
 # Import project modules
@@ -27,6 +24,7 @@ from account_object_class import Account
 from password_object_class import PasswordWithPolicy
 from tool_tip import CreateToolTip
 from crud_ui_composable import Edit_Accounts_UiComposable, Add_Accounts_UiComposable
+
 
 #######################################################################################################
 # Base Account Information Class
@@ -46,7 +44,6 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         super().__init__(parent)
         self.controller = controller 
         self.parent = parent
-        
         self.tag = tag # Set the tag for the type of info to populate
         self.selected_items = [] # Initialize the selected items list
 
@@ -70,7 +67,9 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: create_ui_frame
         Description: Creates a fixed-size frame for UI elements.
         """ 
+        # Destroy the current frame if it exists
         self.destroy_base_composable()
+        
         # Call the methods to set labels, entry fields, and buttons within this ui_frame 
         self.create_general_labels()
         self.create_tree_view_frame()
@@ -115,12 +114,12 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         style.configure("oddrow.Treeview", background="white")
         
         # Dynamic column definitions based on the tag
-        column_headers, columns = self.get_columns_by_tag(self.tag)  # Assuming this method returns two lists
+        column_headers, columns = self.get_columns_by_tag(self.tag)
         
         # Scrollable Frame for Data
         self.scroll_frame = tk.Frame(self.parent, bg='white')
         self.scroll_frame.place(relx=0.54, rely=0.1, anchor="n", relwidth=0.91, relheight=0.9)
-
+        
         # Treeview widget with headers
         self.tree = ttk.Treeview(self.scroll_frame, columns=columns, show='headings', selectmode='extended')
         self.tree.pack(side='left', fill='both', expand=True)
@@ -210,10 +209,20 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: create_buttons
         Description: This function will create all the buttons for the account UI
         """
+        # Set the icon path
+        add_img = 'ic_add.png'
+        edit_img = 'ic_edit.png'
+        delete_img = 'ic_delete.png'
+        
+        # Add the images to the resource path
+        self.resource_path(add_img)
+        self.resource_path(edit_img)
+        self.resource_path(delete_img)
+        
         # Separately handle the settings icon to place it at top right corner
-        self.create_icon_button('ic_add.png', "Add New Account", self.add_new_account_composable, x=0.90, y=0.03)
-        self.create_icon_button('ic_edit.png', "Edit Account", self.edit_account_composable, x=0.93, y=0.03)
-        self.create_icon_button('ic_delete.png', "Delete Account", self.delete_account_composable, x=0.96, y=0.03)
+        self.create_icon_button(add_img, "Add New Account", self.add_new_account_composable, x=0.90, y=0.03)
+        self.create_icon_button(edit_img, "Edit Account", self.edit_account_composable, x=0.93, y=0.03)
+        self.create_icon_button(delete_img, "Delete Account", self.delete_account_composable, x=0.96, y=0.03)
         
     def resize_Icon(self, icon_path, size=(20, 20)):
         """

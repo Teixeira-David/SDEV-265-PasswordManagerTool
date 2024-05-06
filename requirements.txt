@@ -1,0 +1,6 @@
+pyisemail
+Pillow
+pyzipper
+bcrypt
+cryptography
+python-dateutil

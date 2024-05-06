@@ -12,12 +12,9 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-import re
-import sys
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
+from tkinter import messagebox, ttk
 import tkinter as tk
-from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
 # Import project modules
@@ -167,10 +164,16 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
         # Create a sidebar frame
         self.sidebar = tk.Frame(self, bg='#dddddd')
         self.sidebar.pack(side='left', fill='y')
+        fav_img = "ic_favorite.png"
+        set_img = "ic_setting.png"
+        
+        # Add the images to the resource path
+        self.resource_path(fav_img)
+        self.resource_path(set_img)
         
         # Separately handle the favorites and settings icon to place it at top and the bottom
-        self.create_icon_button('ic_favorite.png', "Favorites", self.load_favorites_composable)
-        self.create_icon_button('ic_setting.png', "Settings", self.load_settings_composable, place_bottom=True)
+        self.create_icon_button(fav_img, "Favorites", self.load_favorites_composable)
+        self.create_icon_button(set_img, "Settings", self.load_settings_composable, place_bottom=True)
 
     def sub_sidebar_composable(self):
         """
@@ -188,6 +191,8 @@ class MainDashboard_UiComposable(tk.Frame, Base_Ui_Methods):
 
         # Load, resize icons, and create buttons with tooltips
         for icon_path, tooltip_text, action in icon_info:
+            # Add the images to the resource path
+            self.resource_path(icon_path)
             self.create_icon_button(icon_path, tooltip_text, action, sidebar='sub')
 
     def create_dynamic_column(self):

@@ -12,14 +12,9 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-import re
-import sys
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
+from tkinter import messagebox, ttk
 import tkinter as tk
-from datetime import date, datetime, timedelta
-from PIL import Image, ImageTk
-from pyisemail import is_email
 
 # Import project modules
 from base_methods import Base_Ui_Methods
@@ -91,6 +86,9 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: Sets up the frame containing the application's logo.
         """
         logo_path = "ic_logo_small_medium.png" # logo file path. Should be stored in cwd
+        
+        # Add the images to the resource path
+        self.resource_path(logo_path)
         self.create_sml_ul_image_canvas(
             image_path=logo_path, 
             canvas_width=100, 
@@ -251,7 +249,7 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
         Function Name: get_user_input
         Function Purpose: This function gets and sets the user input.
         """   
-        # This function would actually get input from GUI fields or console input
+        # Get input from GUI fields or console input
         item_selected = self.items_selected_drop.get() if self.tag != "Add" else None
         category = self.category_drop.get()
         appname = self.appname_entry.get()
@@ -280,6 +278,8 @@ class Add_Edit_Account_UiComposable(tk.Frame, Base_Ui_Methods):
             email=email,
             hint=hint,
         )
+        
+        # Get all the data from the data model
         self.data_model_results = account_data.get_all_data()
 
         # Create a user object entry list of the input values
@@ -648,7 +648,6 @@ class Add_Accounts_UiComposable(tk.Frame):
         
         # Delay the UI setup to after the frame is fully initialized
         self.after(100, self.post_init)
-        #self.post_init()
         
     def post_init(self):
         """
@@ -708,7 +707,6 @@ class Edit_Accounts_UiComposable(tk.Frame):
         
         # Delay the UI setup to after the frame is fully initialized
         self.after(100, self.post_init)
-        #self.post_init()
         
     def post_init(self):
         """

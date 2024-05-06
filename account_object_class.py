@@ -15,9 +15,7 @@ for the most up-to-date version.
 from pyisemail import is_email
 import re
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
-import tkinter as tk
-from datetime import date, datetime, timedelta
+from datetime import date
 
 # Import project modules
 from database_script import Database_Query_Handler, Database_Management_Handler
@@ -121,7 +119,7 @@ class Account(User):
     def username(self, value):
         if 'specialcase' in value:
             raise ValueError("Username cannot contain 'specialcase'")
-        super(Account, Account).username.fset(self, value) # Call the User class's setter method
+        super(Account, Account).username.fset(self, value)
 
     # setter method 
     @user_password.setter 
@@ -322,6 +320,7 @@ class Account(User):
         
         # Package parameters
         params = (table_name, table_col_list, table_values_list, prim_id)
+        
         # Call insert_or_update_values with the prepared parameters
         self.insert_or_update_values(params)
         
@@ -365,6 +364,7 @@ class Account(User):
         
         # Package parameters
         params = (table_name, table_col_list, table_values_list, prim_id, key_id)
+        
         # Call insert_or_update_values with the prepared parameters
         self.insert_or_update_values(params)
 

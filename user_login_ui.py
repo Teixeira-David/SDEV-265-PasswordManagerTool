@@ -12,20 +12,14 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-import re
-import sys
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
+from tkinter import messagebox
 import tkinter as tk
-from datetime import date, datetime, timedelta
-from PIL import Image, ImageTk
-from pyisemail import is_email
 
 # Import project modules
 from user_object_class import User
 from base_methods import Base_Ui_Methods
 from password_object_class import PasswordWithPolicy
-
 
 
 #######################################################################################################
@@ -71,6 +65,9 @@ class UserLogin_UiComposable(tk.Frame, Base_Ui_Methods):
         Description: Sets up the frame containing the application's logo.
         """
         logo_path = "ic_logo_small_medium.png" # logo file path. Should be stored in cwd
+        
+        # Add the images to the resource path
+        self.resource_path(logo_path)
         self.create_med_center_image_canvas(
             image_path=logo_path, 
             canvas_width=200, 
@@ -236,6 +233,9 @@ class AddNewUser_UiComposable(tk.Frame, Base_Ui_Methods, PasswordWithPolicy):
         Description: Sets up the frame containing the application's logo.
         """
         logo_path = "ic_logo_small_medium.png" # logo file path. Should be stored in cwd
+        
+        # Add the images to the resource path
+        self.resource_path(logo_path)
         self.create_sml_ul_image_canvas(
             image_path=logo_path, 
             canvas_width=100, 

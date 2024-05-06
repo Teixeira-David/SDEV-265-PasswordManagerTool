@@ -12,12 +12,11 @@ for the most up-to-date version.
 """
 
 # Import Python Libraries
-import re
+import os
 import sys
 from tkinter import *
-from tkinter import messagebox, ttk, Listbox
+from tkinter import messagebox
 import tkinter as tk
-from datetime import date, datetime, timedelta
 from PIL import Image, ImageTk
 
 # Import project modules
@@ -58,12 +57,26 @@ class Base_Ui_Methods():
         # Adjust the size as needed
         self.ui_frame = Frame(parent_frame, width=frame_width, height=frame_height, bg=bg_color)  
         self.ui_frame.pack_propagate(False)  # Prevents the frame from resizing to fit its contents
+        
         # Check if ui_frame exists and is not None before trying to position it
         if hasattr(self, 'ui_frame') and self.ui_frame is not None:
             self.ui_frame.place(relx=0.5, rely=0.5, anchor="center")
         else:
             print("Attempted to position a non-existent or destroyed ui_frame.")
-        
+            
+    def resource_path(self, relative_path):
+        """
+        Function Name: resource_path
+        Description: Get absolute path to resource, works for dev and for PyInstaller 
+        """
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
+
     def create_med_center_image_canvas(self, image_path, canvas_width, canvas_height, image_width, image_height, padding=20, tag=None):
         """
         Function Name: create_image_canvas
@@ -75,6 +88,7 @@ class Base_Ui_Methods():
         
         # Load the logo image
         logo_path = image_path 
+        self.resource_path(logo_path)
         self.shield_logo = Image.open(logo_path)
         self.shield_logo = self.shield_logo.resize((image_width, image_height), Image.Resampling.LANCZOS)
         self.shield_photoimage = ImageTk.PhotoImage(self.shield_logo)
@@ -91,6 +105,7 @@ class Base_Ui_Methods():
         
         # Load the logo image
         logo_path = image_path 
+        self.resource_path(logo_path)
         self.shield_logo = Image.open(logo_path)
         self.shield_logo = self.shield_logo.resize((image_width, image_height), Image.Resampling.LANCZOS)
         self.shield_photoimage = ImageTk.PhotoImage(self.shield_logo)
@@ -111,6 +126,7 @@ class Base_Ui_Methods():
         
         # Load the image
         image_path = "ic_logo_med_bg_low_opacity.png"
+        self.resource_path(image_path)
         image = Image.open(image_path)
 
         # Convert the image to RGBA (if not already in this mode)
@@ -430,55 +446,6 @@ class Base_Ui_Methods():
         else:
             print(f"Frame {frame_name} not found.")
 
-    # def switch_composable(self, frame_class, frame_type='standard', data=None, **kwargs):
-    #     """
-    #     Function Name: switch_composable
-    #     Description: Hides the current frame and replaces it with a new one from the given frame class.
-    #     If the frame already exists, it reuses it instead of creating a new one, making the
-    #     transition more efficient.
-    #     """
-    #     # Debugging output to print all passed keyword arguments
-    #     print("Received kwargs:", kwargs)
-        
-    #     # Select the correct frame dictionary based on frame_type
-    #     frames_dict = self.get_crud_frame() if frame_type == 'crud' else self.get_frames()
-
-    #     # Make sure frame_class is a callable class reference
-    #     if not callable(frame_class):
-    #         print(f"Invalid frame class: {frame_class}")
-    #         return
-        
-    #     # Determine parameters based on frame type
-    #     if frame_type == 'crud':
-    #         class_params = (self.parent, self.controller, data)  # Remove data from here
-    #     else:
-    #         class_params = (self.parent, self.controller, data)
-
-    #     # Hide and potentially destroy the current frame if it exists and is visible
-    #     if hasattr(self, 'current_frame') and self.current_frame is not None:
-    #         if frame_type == 'crud':
-    #             self.destroy_child_frame()
-    #         else:
-    #             self.destroy_child_frame()
-    #         print(f"Hid current frame: {type(self.current_frame).__name__}")
-
-    #     # Check if the frame already exists in the dictionary; if not, create and store it
-    #     if frame_class not in frames_dict:
-    #         # Create and store the frame in the correct dictionary
-    #         frame_instance = frame_class(*class_params, **kwargs)
-    #         frames_dict[frame_class.__name__] = frame_instance
-    #         print(f"Created new frame: {frame_class.__name__}")
-
-    #     # Update the current_frame to the new one from the correct dictionary
-    #     self.current_frame = frames_dict[frame_class.__name__]
-
-    #     # Show the new frame
-    #     if frame_type == 'crud':
-    #         self.current_frame.pack(fill='both', expand=True)
-    #     else:
-    #         self.current_frame.grid(row=0, column=0, sticky="nsew")
-    #     print(f"Loaded frame: {frame_class.__name__}")
-
     def switch_composable(self, frame_class, frame_type='standard', data=None, **kwargs):
         """
         Function Name: switch_composable
@@ -529,30 +496,6 @@ class Base_Ui_Methods():
             frame.destroy()  # Assuming each instance has a destroy method
             print(f"Destroyed frame: {key}")
         self.frame_instances.clear()
-        
-    def register_frame_instance(self, frame_instance):
-        """ 
-        Function Name: register_frame_instance
-        Purpose: Registers a frame instance to be managed for destruction. 
-        """
-        frame_key = frame_instance.__class__.__name__
-        if frame_key not in self.frame_instances:
-            self.frame_instances[frame_key] = frame_instance
-            print(f"Frame registered: {frame_key}")
-        else:
-            print(f"Frame already registered: {frame_key}")
-
-    def unregister_frame_instance(self, frame_instance):
-        """ 
-        Function Name: unregister_frame_instance
-        Purpose: Unregisters a frame instance, typically called before manual destruction. 
-        """
-        frame_key = frame_instance.__class__.__name__
-        if frame_key in self.frame_instances:
-            del self.frame_instances[frame_key]
-            print(f"Frame unregistered: {frame_key}")
-        else:
-            print(f"Frame not found: {frame_key}")
     
     @staticmethod
     def on_entry_click(event, entry, place_holder):

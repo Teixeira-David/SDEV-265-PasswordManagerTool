@@ -26,10 +26,8 @@ import sys
 import tempfile
 import pyzipper
 
-from password_object_class import PasswordWithPolicy
-
 # Import Project Modules
-
+from password_object_class import PasswordWithPolicy
 
 
 #######################################################################################################
