@@ -754,7 +754,7 @@ class Database_Management_Handler(Database_Connection_Handler):
         self.db_load_views()
 
         # Create the test data and insert the data into the database -> Make sure to comment this out for production
-        self.db_load_test_data()
+        #self.db_load_test_data()
         
     def db_load_tables(self):
         """ 
