@@ -333,24 +333,24 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         UI composable
         """
         # Warn the user that this page is not fully implemented yet
-        messagebox.showwarning("Warning", "This page is not fully implemented yet. Please try again later.")
+        #messagebox.showwarning("Warning", "This page is not fully implemented yet. Please try again later.")
         
-        # # Hide the sidebar elements
-        # if self.hide_sidebar:
-        #     self.hide_sidebar()
+        # Hide the sidebar elements
+        if self.hide_sidebar:
+            self.hide_sidebar()
 
-        # print("Received kwargs:", self.hide_sidebar)
-        # print("Received kwargs:", self.show_sidebar)
+        print("Received kwargs:", self.hide_sidebar)
+        print("Received kwargs:", self.show_sidebar)
         
-        # # Initialize and show only the Add_Accounts_UiComposable frame
-        # self.destroy_all_composable()
-        # self.switch_composable(
-        #     frame_class=Add_Accounts_UiComposable, 
-        #     show_sidebar=self.show_sidebar
-        #     )
+        # Initialize and show only the Add_Accounts_UiComposable frame
+        self.destroy_all_composable()
+        self.switch_composable(
+            frame_class=Add_Accounts_UiComposable, 
+            show_sidebar=self.show_sidebar
+            )
         
-        # # Refresh the treeview or the display to show the updated state
-        # self.get_db_data()
+        # Refresh the treeview or the display to show the updated state
+        self.get_db_data()
         
     def edit_account_composable(self):
         """ 
@@ -359,37 +359,37 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         UI composable
         """
         # Warn the user that this page is not fully implemented yet
-        messagebox.showwarning("Warning", "This page is not fully implemented yet. Please try again later.")
+        #messagebox.showwarning("Warning", "This page is not fully implemented yet. Please try again later.")
         
-        # # Get the data from the selected list
-        # data = self.get_selected_items_data()
-        # print(data) # Debugging purposes
+        # Get the data from the selected list
+        data = self.get_selected_items_data()
+        print(data) # Debugging purposes
         
-        # # If not data items are selected, warn the user to select an item
-        # if not data:
-        #     messagebox.showwarning("No Selection", "Please select an item to edit.")
-        #     return
+        # If not data items are selected, warn the user to select an item
+        if not data:
+            messagebox.showwarning("No Selection", "Please select an item to edit.")
+            return
         
-        # # Get the user selected data before opening the custom password generator
-        # #self.controller.shared_data = {'selected_data': data}
+        # Get the user selected data before opening the custom password generator
+        #self.controller.shared_data = {'selected_data': data}
         
-        # # Hide the sidebar elements
-        # if self.hide_sidebar:
-        #     self.hide_sidebar()
-        # print("Received kwargs:", self.hide_sidebar)
-        # print("Received kwargs:", self.show_sidebar)
+        # Hide the sidebar elements
+        if self.hide_sidebar:
+            self.hide_sidebar()
+        print("Received kwargs:", self.hide_sidebar)
+        print("Received kwargs:", self.show_sidebar)
         
-        # # Call the composable
-        # self.destroy_all_composable()
-        # self.switch_composable(
-        #     frame_class=Edit_Accounts_UiComposable,
-        #     data=data, 
-        #     selected_index=self.selected_indices, 
-        #     show_sidebar=self.show_sidebar
-        #     )
+        # Call the composable
+        self.destroy_all_composable()
+        self.switch_composable(
+            frame_class=Edit_Accounts_UiComposable,
+            data=data, 
+            selected_index=self.selected_indices, 
+            show_sidebar=self.show_sidebar
+            )
 
-        # # Refresh the treeview or the display to show the updated state
-        # self.get_db_data() 
+        # Refresh the treeview or the display to show the updated state
+        self.get_db_data() 
         
     def convert_selected_data(self, data):
         """ 
@@ -407,37 +407,37 @@ class Base_AccountInfo_UiComposable(tk.Frame, Base_Ui_Methods):
         UI composable
         """
         # Warn the user that this page is not fully implemented yet
-        messagebox.showwarning("Warning", "This page is not fully implemented yet. Please try again later.")
+        #messagebox.showwarning("Warning", "This page is not fully implemented yet. Please try again later.")
         # print("delete_account_composable triggered") # Debugging purposes
 
-        # # Retrieve the data from the selected list
-        # data = self.get_selected_items_data()
-        # print(data)  # Debugging purposes
+        # Retrieve the data from the selected list
+        data = self.get_selected_items_data()
+        print(data)  # Debugging purposes
         
-        # # If not data items are selected, warn the user to select an item
-        # if not data:
-        #     messagebox.showwarning("No Selection", "Please select an item to edit.")
-        #     return
+        # If not data items are selected, warn the user to select an item
+        if not data:
+            messagebox.showwarning("No Selection", "Please select an item to edit.")
+            return
         
-        # # Convert the data for processing
-        # self.convert_selected_data(data)
+        # Convert the data for processing
+        self.convert_selected_data(data)
         
-        # # Create a formatted string of account names for the confirmation message
-        # account_names = ", \n".join(self.selected_data)
-        # account_list_text = f"{account_names}"
+        # Create a formatted string of account names for the confirmation message
+        account_names = ", \n".join(self.selected_data)
+        account_list_text = f"{account_names}"
 
-        # # Display an explicit and informative warning message to the user
-        # confirmation_message = (
-        #     f"WARNING: You are about to permanently delete the following account(s): \n\n{account_list_text}\n\n"
-        #     "This action CANNOT be undone. All associated data will be irretrievably lost. Please confirm that you wish to "
-        #     "proceed with deleting these accounts. It is recommended to backup any important data before proceeding."
-        # )
+        # Display an explicit and informative warning message to the user
+        confirmation_message = (
+            f"WARNING: You are about to permanently delete the following account(s): \n\n{account_list_text}\n\n"
+            "This action CANNOT be undone. All associated data will be irretrievably lost. Please confirm that you wish to "
+            "proceed with deleting these accounts. It is recommended to backup any important data before proceeding."
+        )
         
-        # if messagebox.askokcancel("Confirm Permanent Delete", confirmation_message):
-        #     # If the user confirms, call the delete method
-        #     Account.delete_account(Account, data)
-        #     # Refresh the treeview or the display to show the updated state
-        #     self.get_db_data()
+        if messagebox.askokcancel("Confirm Permanent Delete", confirmation_message):
+            # If the user confirms, call the delete method
+            Account.delete_account(Account, data)
+            # Refresh the treeview or the display to show the updated state
+            self.get_db_data()
         
     def destroy_base_composable(self):
         """ 
