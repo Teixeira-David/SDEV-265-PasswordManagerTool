@@ -1,0 +1,75 @@
+Project Details
+	•	Project Name: Password Manager Tool (CipherShield)
+	•	Developers: David Teixeira, Kara Jacobs, Jennifer Dillehay
+	•	Version: 0.0.1
+	•	Repository: https://github.com/Teixeira-David/SDEV-265-PasswordManagerTool.git
+
+Introduction
+	This document aims to ensure consistency, reliability, and maintainability in the codebase of our password manager tool. By adhering to these guidelines, we aim to enhance collaboration and streamline the development process.
+
+Code Language Version
+	•	Target Python Version: Python 3.12 or newer.
+	•	Target NOSQL Version: SQLite3
+
+ Formatting Standards
+	•	Indentation: Use 4 spaces per indentation level.
+	•	Line Length: Limit to 80 characters where possible. 
+	•	Imports:
+	◦	Group imports into two categories: Python Standard Libraries, Project Modules
+	◦	Place imports at the top of the file.
+	◦	Add additional imports to the requirements.txt file. 
+
+Naming Conventions
+	•	Utilize underscores only when concatenated variables are required.
+	•	Classes: Use the ‘CapWords’ convention. Example: ‘PasswordWithPolicy’
+	•	Functions/Methods: User ‘lower_case_with_underscores’. Example: ‘generate_password’. -> Camel Case
+	•	Variables: Use ‘lower_case_with_underscores’. Example: ‘first_name’.
+	•	Constants: Use ‘UPPER_CASE_WITH_UNDERSCORES’. Example: ‘VALID_EXPIRY_PERIODS’.
+
+Comments and Docstrings
+	•	Follow PEP 257 for docstring conventions. -> link
+	•	Use docstrings to explain the purpose of classes and methods.
+	•	Inline comments should be used sparingly and only when necessary to explain complex code.
+
+Best Practices
+	•	Security: Implement encryption algorithms and secure storage mechanisms diligently to protect sensitive user data.
+	•	Error Handling: Utilize try/except blocks judiciously to handle and log exceptions.
+	•	Data Validation: Ensure all inputs or external data are validated and sanitized.
+
+Version Control
+	•	Use Git for version control with clear, concise commit messages that explain the “why” behind changes/additions.
+	•	Follow the branching strategy that supports the agile development process, such as GitFlow, GitHub Flow, GitKraken, and GitHub Desktop.
+
+Code Reviews
+	•	Code reviews are mandatory before merging any changes to the main branch and must be approved by the team leader - David Teixeira.
+	•	Reviewers should focus on  code quality, adherence to project standards, and overall software design.
+
+Testing
+	•	Write unit tests for all new code and bug fixes.
+	•	Aim for comprehensive coverage but prioritize critical paths in the application logic.
+
+UI/UX Design Integration
+	•	Refer to the Adobe XD designs when implementing the UI elements to ensure fidelity to the approved designs.
+	•	Ensure that UI implementations are tested across different screen sizes and resolutions.
+
+Database Operations
+	•	Encapsulate database operations within dedicated classes or modules.
+	•	Use parameterized queries to prevent SQL injection.
+	•	Regularly backup and test database recovery processes.
+
+Project Modules and Structure
+	•	Maintain a modular codebase with clear separation between logic, UI, and database operations.
+	•	Organize the codebase into logical packages and modules that reflect the application’s architecture. 
+
+SQLite3/Python Programming Styles
+	•	Database Table Creation:
+	◦	Use multi-line string literals (‘“””’) for SQL statements to enhance readability.
+	◦	Prefix all SQL keywords with a data type prefix (str->string, int->integer, bln->boolean, chr->character, lng->long or long long, f->float, dtm->date-time object) appended by a capital letter to distinguish them from column names and values.
+	◦	Include comments (‘--’) within SQL statements to explain the purpose of the tables, columns, and relationships.
+	◦	Function Naming: use ‘lower_case_with_underscores’ fore database functions to maintain consistency. 
+	◦	Error Handling in DB Operations: Catch ‘sqlite3.Error’ exceptions to handle database errors gracefully and log meaningful error messages. 
+	◦	Implement a centralized logging mechanism for errors encountered during database operations. Log detailed error messages, including the time of occurrence and relevant context, to aid in debugging and maintenance. Capture not only ‘sqlite3.Error’ exceptions but also any other critical exceptions that could impact the database integrity or performance.
+	◦	Validate all inputs or external data before processing them in the database. 
+	◦	Sanitize data by using parameterized queries or prepared statements, especially when incorporating user-generated content into SQL commands. Both practices help to protect against SQL injection attacks and handle data safely.
+	◦	Write unit tests for all database operations, focusing on both normal behavior and edge cases. Use SQLite’s in-memory database feature for faster test execution and isolation.
+	◦	Ensure that the development environment closely mirrors the production environment, particularly regarding the database version and configurations. 
